@@ -11,7 +11,7 @@ import ru.pdfa.converter.domain.PdfaTarget;
 
 @RestController
 @RequestMapping("/api")
-public interface FileUploadApi {
+public interface PdfaConversionApi {
 
     /**
      * Конвертирование файла в выбранный формат PDF-A
