@@ -3,7 +3,7 @@ package ru.pdfa.converter.domain;
 /**
  * Разрешённые входные форматы для конвертации
  */
-public enum InputFormats {
+public enum InputFormat {
     DOC,
     DOCX,
     XSL,
