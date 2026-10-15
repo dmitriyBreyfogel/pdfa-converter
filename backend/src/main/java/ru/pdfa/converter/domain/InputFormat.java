@@ -6,8 +6,8 @@ package ru.pdfa.converter.domain;
 public enum InputFormat {
     DOC,
     DOCX,
-    XSL,
-    XSLX,
+    XLS,
+    XLSX,
     PPTX,
     PDF
 }
