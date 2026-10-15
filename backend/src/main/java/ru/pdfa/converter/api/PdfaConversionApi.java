@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import ru.pdfa.converter.domain.PdfaFormats;
+import ru.pdfa.converter.domain.OutputFormats;
 
 @RestController
 @RequestMapping("/api")
@@ -35,6 +35,6 @@ public interface PdfaConversionApi {
     )
     ResponseEntity<byte[]> convert(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("target") PdfaFormats target
+            @RequestParam("target") OutputFormats target
     );
 }
