@@ -8,6 +8,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Утилитный класс для валидации файла.
+ * Валидация файла происходит по пути к нему через метод {@code validate()}
+ */
 public final class FileValidator {
     private FileValidator() {
         // Util class
