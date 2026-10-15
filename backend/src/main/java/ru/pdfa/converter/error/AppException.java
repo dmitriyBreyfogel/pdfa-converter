@@ -9,8 +9,8 @@ public class AppException extends RuntimeException {
     private final ErrorCode code;
     private final Map<String, Object> details;
 
-    private AppException(ErrorCode code, String message, Map<String, Object> details) {
-        super(message);
+    private AppException(ErrorCode code, String message, Map<String, Object> details, Throwable cause) {
+        super(message, cause);
         this.code = code;
         this.details = (details == null) ? Map.of() : Map.copyOf(details);
     }
@@ -23,7 +23,18 @@ public class AppException extends RuntimeException {
      * @return собранная системная ошибка
      */
     public static AppException build(ErrorCode code, String message, Map<String, Object> details) {
-        return new AppException(code, message, details);
+        return new AppException(code, message, details, null);
+    }
+
+    /**
+     * Сборка системной ошибки с исходной причиной
+     * @param code код ошибки
+     * @param message сообщение к ошибке
+     * @param cause исходная причина
+     * @return собранная системная ошибка
+     */
+    public static AppException build(ErrorCode code, String message, Throwable cause) {
+        return new AppException(code, message, null, cause);
     }
 
     /**
@@ -33,7 +44,7 @@ public class AppException extends RuntimeException {
      * @return собранная системная ошибка
      */
     public static AppException build(ErrorCode code, String message) {
-        return new AppException(code, message, null);
+        return new AppException(code, message, null, null);
     }
 
     /**
@@ -42,7 +53,7 @@ public class AppException extends RuntimeException {
      * @return собранная системная ошибка
      */
     public static AppException build(ErrorCode code) {
-        return new AppException(code, null, null);
+        return new AppException(code, null, null, null);
     }
 
     /* Getters */
