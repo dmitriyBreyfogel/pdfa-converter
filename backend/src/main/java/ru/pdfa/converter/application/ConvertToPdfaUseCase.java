@@ -23,13 +23,19 @@ public class ConvertToPdfaUseCase {
     private static final Logger log = LoggerFactory.getLogger(ConvertToPdfaUseCase.class);
 
     private final List<ConversionStrategy> strategies;
+    private final PdfaValidator pdfaValidator;
 
-    public ConvertToPdfaUseCase(List<ConversionStrategy> strategies) {
+    /**
+     * @param strategies зарегистрированные стратегии конвертации
+     * @param pdfaValidator проверка результата на соответствие PDF/A
+     */
+    public ConvertToPdfaUseCase(List<ConversionStrategy> strategies, PdfaValidator pdfaValidator) {
         this.strategies = strategies;
+        this.pdfaValidator = pdfaValidator;
     }
 
     /**
-     * Конвертирует файл и удаляет временные выходные файлы после чтения PDF.
+     * Конвертирует файл, проверяет результат и удаляет временные выходные файлы.
      *
      * @param source путь к входному файлу
      * @param target требуемый формат PDF/A
@@ -45,6 +51,7 @@ public class ConvertToPdfaUseCase {
         try {
             outputDirectory = Files.createTempDirectory("pdfa-output-");
             Path result = strategy.convert(source, target, outputDirectory);
+            pdfaValidator.validate(result, target);
             return Files.readAllBytes(result);
         }
         catch (IOException e) {
