@@ -40,6 +40,10 @@ RUN apt-get update \
       fonts-crosextra-carlito \
       fonts-crosextra-caladea \
       fonts-noto-core \
+      fonts-noto-cjk \
+      fonts-noto-extra \
+      fonts-noto-mono \
+      fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=verapdf-install /opt/verapdf /opt/verapdf
