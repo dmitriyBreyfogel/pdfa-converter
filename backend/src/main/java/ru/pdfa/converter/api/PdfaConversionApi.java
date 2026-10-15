@@ -16,15 +16,7 @@ public interface PdfaConversionApi {
     /**
      * Конвертирование файла в выбранный формат PDF-A
      *
-     * @param file файл для конвертации
-     * <p>
-     *  Может быть:
-     *         {@code DOCX},
-     *         {@code DOC},
-     *         {@code PDF},
-     *         {@code EXCEL},
-     *         {@code PPTX}
-     * </p>
+     * @param file файл для конвертации. Должен соответствовать форматам {@link ru.pdfa.converter.domain.InputFormat}
      * @param target целевой формат PDF-A конвертации
      * @return сконвертированный файл целевого формата
      */
