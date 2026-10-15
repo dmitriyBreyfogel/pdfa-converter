@@ -1,30 +1,69 @@
 package ru.pdfa.converter.application;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileSystemUtils;
 import ru.pdfa.converter.application.validation.FileValidator;
 import ru.pdfa.converter.domain.InputFormat;
 import ru.pdfa.converter.domain.OutputFormat;
 import ru.pdfa.converter.error.AppException;
 import ru.pdfa.converter.error.ErrorCode;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+/**
+ * Проверяет входной файл и конвертирует его в выбранный формат PDF/A.
+ */
 @Service
 public class ConvertToPdfaUseCase {
+    private static final Logger log = LoggerFactory.getLogger(ConvertToPdfaUseCase.class);
+
     private final List<ConversionStrategy> strategies;
 
     public ConvertToPdfaUseCase(List<ConversionStrategy> strategies) {
         this.strategies = strategies;
     }
 
-    public Path execute(Path source, OutputFormat target, Path outputDirectory) {
+    /**
+     * Конвертирует файл и удаляет временные выходные файлы после чтения PDF.
+     *
+     * @param source путь к входному файлу
+     * @param target требуемый формат PDF/A
+     * @return содержимое сконвертированного PDF
+     */
+    public byte[] execute(Path source, OutputFormat target) {
         FileValidator.validate(source);
 
         InputFormat format = formatOfValidatedFile(source);
         ConversionStrategy strategy = findStrategy(format);
 
-        return strategy.convert(source, target, outputDirectory);
+        Path outputDirectory = null;
+        try {
+            outputDirectory = Files.createTempDirectory("pdfa-output-");
+            Path result = strategy.convert(source, target, outputDirectory);
+            return Files.readAllBytes(result);
+        }
+        catch (IOException e) {
+            throw AppException.build(
+                    ErrorCode.FILE_PROCESSING_ERROR,
+                    "Не удалось обработать временные файлы конвертации",
+                    e
+            );
+        }
+        finally {
+            if (outputDirectory != null) {
+                try {
+                    FileSystemUtils.deleteRecursively(outputDirectory);
+                }
+                catch (IOException e) {
+                    log.warn("Не удалось удалить временный каталог {}", outputDirectory, e);
+                }
+            }
+        }
     }
 
     private InputFormat formatOfValidatedFile(Path source) {
