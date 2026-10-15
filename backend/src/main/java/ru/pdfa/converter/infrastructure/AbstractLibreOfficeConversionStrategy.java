@@ -7,6 +7,7 @@ import ru.pdfa.converter.error.ErrorCode;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
@@ -32,6 +33,7 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
             Path outputDirectory
     ) {
         Path result = expectedPdfPath(source, outputDirectory);
+        requireOutputAvailable(result);
 
         try {
             Process process = startLibreOffice(source, outputDirectory, exportFilter(target));
@@ -82,6 +84,18 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
         int extensionIndex = sourceName.lastIndexOf('.');
         String resultName = sourceName.substring(0, extensionIndex) + ".pdf";
         return outputDirectory.resolve(resultName);
+    }
+
+    /**
+     * Не допускает перезаписи входного файла или выдачи старого PDF как нового результата.
+     */
+    private static void requireOutputAvailable(Path result) {
+        if (Files.exists(result, LinkOption.NOFOLLOW_LINKS)) {
+            throw AppException.build(
+                    ErrorCode.FILE_PROCESSING_ERROR,
+                    "Выходной PDF уже существует"
+            );
+        }
     }
 
     /**
