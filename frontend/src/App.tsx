@@ -3,6 +3,31 @@ import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Dr
 type TargetFormat = 'PDF_A_1b' | 'PDF_A_2b' | 'PDF_A_3b'
 type Status = 'idle' | 'converting' | 'done' | 'ready'
 type Theme = 'light' | 'dark'
+type ErrorDetail = { label: string; text: string }
+type ConversionError = { message: string; details: ErrorDetail[] }
+
+class ConversionRequestError extends Error {
+  readonly details: ErrorDetail[]
+
+  constructor(message: string, details: ErrorDetail[]) {
+    super(message)
+    this.details = details
+  }
+}
+
+function readErrorDetails(value: unknown): ErrorDetail[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return []
+
+  const labels: Record<string, string> = {
+    log: 'Лог обработки',
+    report: 'Отчёт проверки PDF/A',
+  }
+  return Object.entries(value).flatMap(([key, detail]) => {
+    if (detail == null) return []
+    const text = typeof detail === 'string' ? detail : JSON.stringify(detail, null, 2)
+    return text?.trim() ? [{ label: labels[key] ?? key, text }] : []
+  })
+}
 
 const formatLabels: Record<TargetFormat, string> = {
   PDF_A_1b: 'PDF/A-1b',
@@ -66,7 +91,7 @@ function App() {
   const [target, setTarget] = useState<TargetFormat>('PDF_A_2b')
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
-  const [serverError, setServerError] = useState('')
+  const [serverError, setServerError] = useState<ConversionError | null>(null)
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const [isFormatOpen, setIsFormatOpen] = useState(false)
   const isConverting = status === 'converting'
@@ -113,7 +138,7 @@ function App() {
     clearResult()
     setTarget(format)
     setStatus('idle')
-    setServerError('')
+    setServerError(null)
     setIsFormatOpen(false)
     formatButtonRef.current?.focus()
   }
@@ -132,7 +157,7 @@ function App() {
   }
 
   function selectFile(nextFile?: File) {
-    setServerError('')
+    setServerError(null)
     if (!nextFile) return
     clearResult()
     setFile(nextFile)
@@ -150,7 +175,7 @@ function App() {
     clearResult()
     setFile(null)
     setStatus('idle')
-    setServerError('')
+    setServerError(null)
     fileInputRef.current?.focus()
   }
 
@@ -192,7 +217,7 @@ function App() {
     }
     setIsFormatOpen(false)
     setStatus('converting')
-    setServerError('')
+    setServerError(null)
     const controller = new AbortController()
     conversionRequest.current = controller
     const formData = new FormData()
@@ -207,17 +232,21 @@ function App() {
       })
       if (!response.ok) {
         let message = `Не удалось конвертировать файл (HTTP ${response.status}).`
+        let details: ErrorDetail[] = []
         if (response.headers.get('content-type')?.includes('application/json')) {
           try {
             const error: unknown = await response.json()
             if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
               message = error.message
             }
+            if (error && typeof error === 'object' && 'details' in error) {
+              details = readErrorDetails(error.details)
+            }
           } catch {
             // Оставляем сообщение со статусом, если сервер вернул некорректный JSON.
           }
         }
-        throw new Error(message)
+        throw new ConversionRequestError(message, details)
       }
 
       const pdf = await response.blob()
@@ -233,9 +262,11 @@ function App() {
     } catch (error) {
       if (controller.signal.aborted) return
       setStatus('idle')
-      setServerError(error instanceof Error && !(error instanceof TypeError)
-        ? error.message
-        : 'Не удалось связаться с сервером. Попробуйте ещё раз.')
+      setServerError(error instanceof ConversionRequestError
+        ? { message: error.message, details: error.details }
+        : { message: error instanceof Error && !(error instanceof TypeError)
+          ? error.message
+          : 'Не удалось связаться с сервером. Попробуйте ещё раз.', details: [] })
     } finally {
       if (conversionRequest.current === controller) conversionRequest.current = null
     }
@@ -423,10 +454,22 @@ function App() {
             </span>
           </button>
 
-          <div className="form-message" role="status" aria-live="polite">
-            {serverError && <p className="error-message">{serverError}</p>}
-            {isConverting && <span className="sr-only">Файл конвертируется</span>}
-            {isReady && <span className="sr-only">Файл готов к скачиванию</span>}
+          <div className="form-message">
+            {serverError && (
+              <div className="error-result">
+                <p className="error-message" role="alert">{serverError.message}</p>
+                {serverError.details.map((detail) => (
+                  <div className="error-detail" key={detail.label}>
+                    <strong>{detail.label}</strong>
+                    <pre>{detail.text}</pre>
+                  </div>
+                ))}
+              </div>
+            )}
+            <span role="status" aria-live="polite">
+              {isConverting && <span className="sr-only">Файл конвертируется</span>}
+              {isReady && <span className="sr-only">Файл готов к скачиванию</span>}
+            </span>
           </div>
         </form>
 

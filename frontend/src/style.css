@@ -375,6 +375,9 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
 .form-message:empty { display: none; }
 .form-message p { margin: 15px 0 0; font-size: 13px; line-height: 1.45; }
 .error-message { color: #b44343; }
+.error-detail { margin-top: 12px; text-align: left; }
+.error-detail strong { display: block; margin-bottom: 6px; color: #8f3535; font-size: 12px; }
+.error-detail pre { box-sizing: border-box; max-height: 240px; margin: 0; padding: 12px; overflow: auto; border: 1px solid #e8c7c7; border-radius: 8px; background: #fff7f7; color: #652d2d; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -454,3 +457,5 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
 :root[data-theme='dark'] .convert-button:disabled { color: #a9b7c8; background: #354458; }
 :root[data-theme='dark'] .convert-button:disabled.convert-button-converting { color: #fff; background: #416d9a; }
 :root[data-theme='dark'] .error-message { color: #ffadad; }
+:root[data-theme='dark'] .error-detail strong { color: #ffc3c3; }
+:root[data-theme='dark'] .error-detail pre { border-color: #784b55; background: #30252e; color: #f6d8d8; }
