@@ -64,11 +64,12 @@ public final class GhostscriptPdfConversionStrategy implements ConversionStrateg
                     .redirectOutput(log.toFile())
                     .start();
 
-            awaitConversion(process);
+            awaitConversion(process, log);
             if (!Files.isRegularFile(result) || Files.size(result) == 0) {
                 throw AppException.build(
                         ErrorCode.FILE_PROCESSING_ERROR,
-                        "Ghostscript не создал PDF"
+                        "Ghostscript не создал PDF",
+                        ProcessErrorDetails.fromLog(log)
                 );
             }
             return result;
@@ -90,13 +91,14 @@ public final class GhostscriptPdfConversionStrategy implements ConversionStrateg
         };
     }
 
-    private static void awaitConversion(Process process) {
+    private static void awaitConversion(Process process, Path log) {
         try {
             if (!process.waitFor(120, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 throw AppException.build(
                         ErrorCode.FILE_PROCESSING_ERROR,
-                        "Превышено время конвертации через Ghostscript"
+                        "Превышено время конвертации через Ghostscript",
+                        ProcessErrorDetails.fromLog(log)
                 );
             }
         }
@@ -106,6 +108,7 @@ public final class GhostscriptPdfConversionStrategy implements ConversionStrateg
             throw AppException.build(
                     ErrorCode.FILE_PROCESSING_ERROR,
                     "Конвертация через Ghostscript прервана",
+                    ProcessErrorDetails.fromLog(log),
                     e
             );
         }
@@ -113,7 +116,8 @@ public final class GhostscriptPdfConversionStrategy implements ConversionStrateg
         if (process.exitValue() != 0) {
             throw AppException.build(
                     ErrorCode.FILE_PROCESSING_ERROR,
-                    "Ghostscript завершился с кодом " + process.exitValue()
+                    "Ghostscript завершился с кодом " + process.exitValue(),
+                    ProcessErrorDetails.fromLog(log)
             );
         }
     }

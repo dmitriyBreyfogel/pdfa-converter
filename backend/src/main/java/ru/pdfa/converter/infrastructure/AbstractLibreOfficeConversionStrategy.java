@@ -36,9 +36,10 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
         requireOutputAvailable(result);
 
         try {
-            Process process = startLibreOffice(source, outputDirectory, exportFilter(target));
-            awaitConversion(process);
-            requireCreatedPdf(result);
+            Path log = Files.createTempFile(outputDirectory, "libreoffice-", ".log");
+            Process process = startLibreOffice(source, outputDirectory, exportFilter(target), log);
+            awaitConversion(process, log);
+            requireCreatedPdf(result, log);
             return result;
         } catch (IOException e) {
             throw AppException.build(
@@ -104,10 +105,10 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
     private static Process startLibreOffice(
             Path source,
             Path outputDirectory,
-            String exportFilter
+            String exportFilter,
+            Path log
     ) throws IOException {
         Path profile = Files.createTempDirectory(outputDirectory, "libreoffice-profile-");
-        Path log = Files.createTempFile(outputDirectory, "libreoffice-", ".log");
 
         return new ProcessBuilder(
                 "libreoffice",
@@ -125,13 +126,14 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
     /**
      * Ожидает завершения процесса не более двух минут и проверяет код выхода.
      */
-    private static void awaitConversion(Process process) {
+    private static void awaitConversion(Process process, Path log) {
         try {
             if (!process.waitFor(120, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 throw AppException.build(
                         ErrorCode.FILE_PROCESSING_ERROR,
-                        "Превышено время конвертации"
+                        "Превышено время конвертации",
+                        ProcessErrorDetails.fromLog(log)
                 );
             }
         } catch (InterruptedException e) {
@@ -140,6 +142,7 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
             throw AppException.build(
                     ErrorCode.FILE_PROCESSING_ERROR,
                     "Конвертация прервана",
+                    ProcessErrorDetails.fromLog(log),
                     e
             );
         }
@@ -147,7 +150,8 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
         if (process.exitValue() != 0) {
             throw AppException.build(
                     ErrorCode.FILE_PROCESSING_ERROR,
-                    "LibreOffice завершился с кодом " + process.exitValue()
+                    "LibreOffice завершился с кодом " + process.exitValue(),
+                    ProcessErrorDetails.fromLog(log)
             );
         }
     }
@@ -155,11 +159,12 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
     /**
      * Проверяет, что LibreOffice создал непустой PDF.
      */
-    private static void requireCreatedPdf(Path result) throws IOException {
+    private static void requireCreatedPdf(Path result, Path log) throws IOException {
         if (!Files.isRegularFile(result) || Files.size(result) == 0) {
             throw AppException.build(
                     ErrorCode.FILE_PROCESSING_ERROR,
-                    "LibreOffice не создал PDF"
+                    "LibreOffice не создал PDF",
+                    ProcessErrorDetails.fromLog(log)
             );
         }
     }

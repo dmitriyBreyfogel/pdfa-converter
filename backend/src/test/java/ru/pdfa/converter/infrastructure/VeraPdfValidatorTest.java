@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -69,6 +70,7 @@ class VeraPdfValidatorTest {
 
         assertEquals(ErrorCode.FILE_PROCESSING_ERROR, error.getCode());
         assertEquals(3, attempts.get());
+        assertTrue(((String) error.getDetails().get("log")).contains("AuditDurationImpl"));
     }
 
     @Test
@@ -86,6 +88,7 @@ class VeraPdfValidatorTest {
 
         assertEquals(ErrorCode.PDF_A_VALIDATION_FAILED, error.getCode());
         assertEquals(1, attempts.get());
+        assertTrue(((String) error.getDetails().get("report")).contains("isCompliant=\"false\""));
     }
 
     @Test
@@ -105,6 +108,7 @@ class VeraPdfValidatorTest {
         assertEquals(ErrorCode.FILE_PROCESSING_ERROR, error.getCode());
         assertEquals("veraPDF завершился с кодом 1", error.getMessage());
         assertEquals(1, attempts.get());
+        assertEquals("veraPDF failed for another reason", error.getDetails().get("log"));
     }
 
     private static String compliantReport(boolean compliant) {

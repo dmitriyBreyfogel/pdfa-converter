@@ -26,6 +26,10 @@ public class AppException extends RuntimeException {
         return new AppException(code, message, details, null);
     }
 
+    public static AppException build(ErrorCode code, String message, Map<String, Object> details, Throwable cause) {
+        return new AppException(code, message, details, cause);
+    }
+
     /**
      * Сборка системной ошибки с исходной причиной
      * @param code код ошибки

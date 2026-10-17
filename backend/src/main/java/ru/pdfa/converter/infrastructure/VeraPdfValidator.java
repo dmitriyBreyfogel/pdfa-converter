@@ -62,14 +62,8 @@ public final class VeraPdfValidator implements PdfaValidator {
         };
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            if (validateOnce(pdf, target, profile)) {
+            if (validateOnce(pdf, target, profile, attempt)) {
                 return;
-            }
-            if (attempt == MAX_ATTEMPTS) {
-                throw AppException.build(
-                        ErrorCode.FILE_PROCESSING_ERROR,
-                        "veraPDF не смог проверить PDF из-за изменения системного времени"
-                );
             }
 
             log.warn("veraPDF прервал проверку из-за изменения системного времени, попытка {}/{}",
@@ -81,17 +75,26 @@ public final class VeraPdfValidator implements PdfaValidator {
     /**
      * Выполняет одну проверку. Возвращает {@code false} только при сбое таймера veraPDF.
      */
-    private boolean validateOnce(Path pdf, OutputFormat target, String profile) {
+    private boolean validateOnce(Path pdf, OutputFormat target, String profile, int attempt) {
+        Path report = null;
+        Path errorLog = null;
         try {
             Path directory = pdf.toAbsolutePath().getParent();
-            Path report = Files.createTempFile(directory, "verapdf-", ".xml");
-            Path errorLog = Files.createTempFile(directory, "verapdf-", ".log");
+            report = Files.createTempFile(directory, "verapdf-", ".xml");
+            errorLog = Files.createTempFile(directory, "verapdf-", ".log");
 
             Process process = processStarter.start(profile, pdf, report, errorLog);
 
-            int exitCode = awaitValidation(process);
+            int exitCode = awaitValidation(process, report, errorLog);
             String error = exitCode == 0 ? "" : Files.readString(errorLog);
             if (exitCode != 0 && isClockRollback(error)) {
+                if (attempt == MAX_ATTEMPTS) {
+                    throw AppException.build(
+                            ErrorCode.FILE_PROCESSING_ERROR,
+                            "veraPDF не смог проверить PDF из-за изменения системного времени",
+                            ProcessErrorDetails.fromValidation(report, errorLog)
+                    );
+                }
                 return false;
             }
 
@@ -105,6 +108,7 @@ public final class VeraPdfValidator implements PdfaValidator {
                     throw AppException.build(
                             ErrorCode.FILE_PROCESSING_ERROR,
                             "veraPDF завершился с кодом " + exitCode,
+                            ProcessErrorDetails.fromValidation(report, errorLog),
                             e
                     );
                 }
@@ -113,14 +117,16 @@ public final class VeraPdfValidator implements PdfaValidator {
             if (!compliant) {
                 throw AppException.build(
                         ErrorCode.PDF_A_VALIDATION_FAILED,
-                        "Созданный PDF не соответствует формату " + target
+                        "Созданный PDF не соответствует формату " + target,
+                        ProcessErrorDetails.fromValidation(report, errorLog)
                 );
             }
             if (exitCode != 0) {
                 log.error("veraPDF завершился с кодом {}: {}", exitCode, error);
                 throw AppException.build(
                         ErrorCode.FILE_PROCESSING_ERROR,
-                        "veraPDF завершился с кодом " + exitCode
+                        "veraPDF завершился с кодом " + exitCode,
+                        ProcessErrorDetails.fromValidation(report, errorLog)
                 );
             }
             return true;
@@ -129,6 +135,7 @@ public final class VeraPdfValidator implements PdfaValidator {
             throw AppException.build(
                     ErrorCode.FILE_PROCESSING_ERROR,
                     "Не удалось проверить созданный PDF",
+                    ProcessErrorDetails.fromValidation(report, errorLog),
                     e
             );
         }
@@ -174,13 +181,14 @@ public final class VeraPdfValidator implements PdfaValidator {
     /**
      * Ожидает завершения veraPDF не более двух минут.
      */
-    private static int awaitValidation(Process process) {
+    private static int awaitValidation(Process process, Path report, Path errorLog) {
         try {
             if (!process.waitFor(120, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 throw AppException.build(
                         ErrorCode.FILE_PROCESSING_ERROR,
-                        "Превышено время проверки PDF/A"
+                        "Превышено время проверки PDF/A",
+                        ProcessErrorDetails.fromValidation(report, errorLog)
                 );
             }
             return process.exitValue();
@@ -191,6 +199,7 @@ public final class VeraPdfValidator implements PdfaValidator {
             throw AppException.build(
                     ErrorCode.FILE_PROCESSING_ERROR,
                     "Проверка PDF/A прервана",
+                    ProcessErrorDetails.fromValidation(report, errorLog),
                     e
             );
         }
