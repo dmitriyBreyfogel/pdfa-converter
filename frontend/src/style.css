@@ -319,7 +319,7 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
 .convert-button-content { display: grid; grid-template-columns: 20px auto 20px; align-items: center; gap: 8px; }
 .conversion-indicator, .convert-button-spacer { display: block; width: 20px; height: 20px; }
 .conversion-indicator { position: relative; }
-.conversion-ring, .conversion-check, .conversion-download {
+.conversion-ring, .conversion-download {
   position: absolute;
   inset: 0;
   width: 20px;
@@ -332,19 +332,12 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
   stroke: #fff;
   stroke-width: 2.6;
   stroke-linecap: round;
-  stroke-dasharray: 56.55;
-  stroke-dashoffset: 56.55;
-  animation: circle-progress linear forwards;
+  stroke-dasharray: 36 56.55;
+  transform-origin: 50% 50%;
+  animation: circle-progress 1s linear infinite;
 }
 
-@keyframes circle-progress { to { stroke-dashoffset: 0; } }
-
-.conversion-check {
-  color: #58c984;
-  opacity: 0;
-  transform: scale(.7);
-  transition: opacity .25s ease, transform .25s ease;
-}
+@keyframes circle-progress { to { transform: rotate(360deg); } }
 
 .conversion-download {
   color: #fff;
@@ -353,20 +346,17 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
   transition: opacity .25s ease, transform .25s ease;
 }
 
-.conversion-indicator-done .conversion-ring,
 .conversion-indicator-ready .conversion-ring { opacity: 0; transform: rotate(-90deg) scale(.75); }
-.conversion-indicator-done .conversion-check { opacity: 1; transform: scale(1); }
 .conversion-indicator-ready .conversion-download { opacity: 1; transform: scale(1); transition-delay: .08s; }
 
 .form-message { text-align: center; }
 .form-message:empty { display: none; }
 .form-message p { margin: 15px 0 0; font-size: 13px; line-height: 1.45; }
 .error-message { color: #b44343; }
-.page-note { margin: 23px 0 0; color: #9aa5b3; font-size: 12px; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .dropzone-label, .upload-icon, .upload-icon svg, .format-menu, .format-chevron, .theme-toggle, .conversion-ring, .conversion-check, .conversion-download { transition: none; }
+  .dropzone-label, .upload-icon, .upload-icon svg, .format-menu, .format-chevron, .theme-toggle, .conversion-ring, .conversion-download { transition: none; }
   .dropzone-title, .dropzone-subtitle, .dropzone-hint, .dropzone-file { animation: none; }
   .conversion-ring { display: none; }
 }
@@ -448,4 +438,3 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
 :root[data-theme='dark'] .convert-button:disabled { color: #a9b7c8; background: #354458; }
 :root[data-theme='dark'] .convert-button:disabled.convert-button-converting { color: #fff; background: #416d9a; }
 :root[data-theme='dark'] .error-message { color: #ffadad; }
-:root[data-theme='dark'] .page-note { color: #91a3b9; }

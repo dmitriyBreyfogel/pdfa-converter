@@ -1,17 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { convertFile, type TargetFormat } from './api/conversion'
 
-type TargetFormat = 'PDF_A_2b' | 'PDF_A_1b'
-type Status = 'idle' | 'converting' | 'finishing' | 'done' | 'ready'
+type Status = 'idle' | 'converting' | 'ready'
 type Theme = 'light' | 'dark'
 
 const formatLabels: Record<TargetFormat, string> = {
   PDF_A_2b: 'PDF/A-2b',
   PDF_A_1b: 'PDF/A-1b',
+  PDF_A_3b: 'PDF/A-3b',
 }
-const formatOptions: TargetFormat[] = ['PDF_A_2b', 'PDF_A_1b']
-const demoConversionDurationMs = 4000
-const completionPauseMs = 280
-const checkDisplayMs = 650
+const formatOptions: TargetFormat[] = ['PDF_A_2b', 'PDF_A_1b', 'PDF_A_3b']
 
 function formatFileSize(bytes: number) {
   if (bytes === 0) return '0 КБ'
@@ -32,9 +30,10 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formatDropdownRef = useRef<HTMLDivElement>(null)
   const formatButtonRef = useRef<HTMLButtonElement>(null)
-  const formatOptionRefs = useRef<Record<TargetFormat, HTMLButtonElement | null>>({ PDF_A_2b: null, PDF_A_1b: null })
+  const formatOptionRefs = useRef<Record<TargetFormat, HTMLButtonElement | null>>({ PDF_A_2b: null, PDF_A_1b: null, PDF_A_3b: null })
   const dragDepth = useRef(0)
-  const conversionTimer = useRef<number | null>(null)
+  const conversionRequest = useRef<AbortController | null>(null)
+  const resultUrl = useRef<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [fileRevision, setFileRevision] = useState(0)
   const [target, setTarget] = useState<TargetFormat>('PDF_A_2b')
@@ -43,8 +42,8 @@ function App() {
   const [serverError, setServerError] = useState('')
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const [isFormatOpen, setIsFormatOpen] = useState(false)
-  const isConverting = status === 'converting' || status === 'finishing'
-  const isReady = status === 'done' || status === 'ready'
+  const isConverting = status === 'converting'
+  const isReady = status === 'ready'
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -57,7 +56,8 @@ function App() {
   }, [theme])
 
   useEffect(() => () => {
-    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
+    conversionRequest.current?.abort()
+    if (resultUrl.current) URL.revokeObjectURL(resultUrl.current)
   }, [])
 
   useEffect(() => {
@@ -74,7 +74,6 @@ function App() {
 
   function selectTarget(format: TargetFormat) {
     setTarget(format)
-    setStatus('idle')
     setServerError('')
     setIsFormatOpen(false)
     formatButtonRef.current?.focus()
@@ -96,8 +95,8 @@ function App() {
   function selectFile(nextFile?: File) {
     setServerError('')
     if (!nextFile) return
-    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
-    conversionTimer.current = null
+    if (resultUrl.current) URL.revokeObjectURL(resultUrl.current)
+    resultUrl.current = null
     setFile(nextFile)
     setFileRevision((revision) => revision + 1)
     setStatus('idle')
@@ -110,8 +109,8 @@ function App() {
 
   function clearFile() {
     if (isConverting) return
-    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
-    conversionTimer.current = null
+    if (resultUrl.current) URL.revokeObjectURL(resultUrl.current)
+    resultUrl.current = null
     setFile(null)
     setStatus('idle')
     setServerError('')
@@ -145,47 +144,49 @@ function App() {
     selectFile(event.dataTransfer.files[0])
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!file || isConverting) return
     if (isReady) {
-      downloadOriginal()
+      downloadResult()
       return
     }
     setIsFormatOpen(false)
     setStatus('converting')
     setServerError('')
-    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
-    conversionTimer.current = window.setTimeout(() => {
-      setStatus('finishing')
-      conversionTimer.current = window.setTimeout(() => {
-        setStatus('done')
-        conversionTimer.current = window.setTimeout(() => {
-          setStatus('ready')
-          conversionTimer.current = null
-        }, checkDisplayMs)
-      }, completionPauseMs)
-    }, demoConversionDurationMs)
+    const request = new AbortController()
+    conversionRequest.current = request
+    try {
+      const pdf = await convertFile(file, target, request.signal)
+      resultUrl.current = URL.createObjectURL(pdf)
+      setStatus('ready')
+    } catch (error) {
+      if (request.signal.aborted) return
+      setServerError(error instanceof TypeError
+        ? 'Не удалось связаться с сервером. Попробуйте ещё раз.'
+        : error instanceof Error ? error.message : 'Не удалось конвертировать файл')
+      setStatus('idle')
+    } finally {
+      conversionRequest.current = null
+    }
   }
 
-  function downloadOriginal() {
-    if (!file || !isReady) return
-    const url = URL.createObjectURL(file)
+  function downloadResult() {
+    if (!file || !resultUrl.current || !isReady) return
     const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
+    link.href = resultUrl.current
+    link.download = file.name.replace(/\.[^.]+$/, '') + '.pdf'
     document.body.appendChild(link)
     link.click()
     link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
   return (
     <div className="page-shell">
       <header className="site-header">
-        <a className="brand" href="/" aria-label="%%temp%% — на главную">
+        <a className="brand" href="/" aria-label="PDF/A Converter — на главную">
           <span className="brand-mark" aria-hidden="true">P<span>/A</span></span>
-          <span className="brand-name">%%temp%%</span>
+          <span className="brand-name">PDF/A Converter</span>
         </a>
         <button
           className="theme-toggle"
@@ -234,6 +235,7 @@ function App() {
               id="source-file"
               className="file-input"
               type="file"
+              accept=".pdf,.doc,.docx,.pptx,.xls,.xlsx"
               onChange={handleFileChange}
               disabled={isConverting}
               aria-describedby={file ? 'replace-hint' : 'file-hint'}
@@ -333,16 +335,12 @@ function App() {
             <span className="convert-button-content">
               <span className="convert-button-spacer" aria-hidden="true" />
               <span>{isConverting ? 'Конвертация' : isReady ? 'Скачать' : 'Конвертировать'}</span>
-              <span className={`conversion-indicator${status === 'done' ? ' conversion-indicator-done' : ''}${status === 'ready' ? ' conversion-indicator-ready' : ''}`} aria-hidden="true">
+              <span className={`conversion-indicator${status === 'ready' ? ' conversion-indicator-ready' : ''}`} aria-hidden="true">
                 {status !== 'idle' && (
                   <>
                     <svg className="conversion-ring" viewBox="0 0 24 24" fill="none">
                       <circle className="conversion-ring-track" cx="12" cy="12" r="9" />
-                      <circle className="conversion-ring-fill" cx="12" cy="12" r="9" style={{ animationDuration: `${demoConversionDurationMs}ms` }} />
-                    </svg>
-                    <svg className="conversion-check" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" fill="currentColor" />
-                      <path d="m7 12 3.2 3.2L17 8.8" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle className="conversion-ring-fill" cx="12" cy="12" r="9" />
                     </svg>
                     <svg className="conversion-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 3.5v11m0 0 4-4m-4 4-4-4M4.5 17.5v2h15v-2" />
@@ -360,7 +358,6 @@ function App() {
           </div>
         </form>
 
-        <p className="page-note">Демонстрация: конвертация пока не выполняется, скачивается исходный файл.</p>
       </main>
     </div>
   )
