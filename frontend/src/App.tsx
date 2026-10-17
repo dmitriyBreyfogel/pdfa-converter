@@ -372,7 +372,7 @@ function App() {
                     setIsFormatOpen(true)
                   }
                 }}
-                disabled={isConverting || isReady}
+                disabled={isConverting}
               >
                 <span>{formatLabels[target]}</span>
                 <svg className="format-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true">
