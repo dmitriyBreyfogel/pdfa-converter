@@ -23,14 +23,21 @@ public class ConvertToPdfaUseCase {
     private static final Logger log = LoggerFactory.getLogger(ConvertToPdfaUseCase.class);
 
     private final List<ConversionStrategy> strategies;
+    private final PdfaCreationDateSynchronizer creationDateSynchronizer;
     private final PdfaValidator pdfaValidator;
 
     /**
      * @param strategies зарегистрированные стратегии конвертации
+     * @param creationDateSynchronizer согласование даты создания офисного PDF/A-1b
      * @param pdfaValidator проверка результата на соответствие PDF/A
      */
-    public ConvertToPdfaUseCase(List<ConversionStrategy> strategies, PdfaValidator pdfaValidator) {
+    public ConvertToPdfaUseCase(
+            List<ConversionStrategy> strategies,
+            PdfaCreationDateSynchronizer creationDateSynchronizer,
+            PdfaValidator pdfaValidator
+    ) {
         this.strategies = strategies;
+        this.creationDateSynchronizer = creationDateSynchronizer;
         this.pdfaValidator = pdfaValidator;
     }
 
@@ -51,6 +58,9 @@ public class ConvertToPdfaUseCase {
         try {
             outputDirectory = Files.createTempDirectory("pdfa-output-");
             Path result = strategy.convert(source, target, outputDirectory);
+            if (format != InputFormat.PDF && target == OutputFormat.PDF_A_1b) {
+                creationDateSynchronizer.synchronize(result);
+            }
             pdfaValidator.validate(result, target);
             return Files.readAllBytes(result);
         }
