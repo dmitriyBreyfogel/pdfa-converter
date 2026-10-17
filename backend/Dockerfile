@@ -34,6 +34,7 @@ RUN apt-get update \
       libreoffice-impress \
       libreoffice-draw \
       libreoffice-java-common \
+      ghostscript \
       fontconfig \
       fonts-dejavu-core \
       fonts-liberation \
@@ -48,6 +49,7 @@ RUN apt-get update \
 
 COPY --from=verapdf-install /opt/verapdf /opt/verapdf
 COPY --from=build /build/target/pdfa-converter-backend-0.0.1-SNAPSHOT.jar /app/app.jar
+COPY docker/pdfa-output-intent.ps /app/pdfa-output-intent.ps
 
 ENV PATH="/opt/verapdf:${PATH}"
 
@@ -57,7 +59,7 @@ RUN useradd --system --uid 10001 --create-home --home-dir /home/app app \
 
 USER app
 WORKDIR /app
-RUN java -version && libreoffice --version && verapdf --version
+RUN java -version && libreoffice --version && gs --version && verapdf --version
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
