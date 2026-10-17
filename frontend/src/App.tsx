@@ -1,17 +1,41 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 
-type TargetFormat = 'PDF_A_2b' | 'PDF_A_1b'
-type Status = 'idle' | 'converting' | 'finishing' | 'done' | 'ready'
+type TargetFormat = 'PDF_A_1b' | 'PDF_A_2b' | 'PDF_A_3b'
+type Status = 'idle' | 'converting' | 'done' | 'ready'
 type Theme = 'light' | 'dark'
 
 const formatLabels: Record<TargetFormat, string> = {
-  PDF_A_2b: 'PDF/A-2b',
   PDF_A_1b: 'PDF/A-1b',
+  PDF_A_2b: 'PDF/A-2b',
+  PDF_A_3b: 'PDF/A-3b',
 }
-const formatOptions: TargetFormat[] = ['PDF_A_2b', 'PDF_A_1b']
-const demoConversionDurationMs = 4000
-const completionPauseMs = 280
+const formatOptions: TargetFormat[] = ['PDF_A_1b', 'PDF_A_2b', 'PDF_A_3b']
 const checkDisplayMs = 650
+
+function getFileExtension(name: string) {
+  const dotIndex = name.lastIndexOf('.')
+  return dotIndex > 0 && dotIndex < name.length - 1 ? name.slice(dotIndex + 1).toUpperCase() : 'FILE'
+}
+
+function FileTypeIcon({ name }: { name: string }) {
+  const extension = getFileExtension(name)
+  const kind = extension === 'PDF' ? 'pdf'
+    : extension === 'DOC' || extension === 'DOCX' ? 'word'
+      : extension === 'XLS' || extension === 'XLSX' ? 'excel'
+        : extension === 'PPT' || extension === 'PPTX' ? 'powerpoint'
+          : 'generic'
+  const symbol = kind === 'word' ? 'W' : kind === 'excel' ? 'X' : kind === 'powerpoint' ? 'P' : extension
+
+  return (
+    <span className={`file-type-icon file-type-icon-${kind}`} aria-hidden="true" title={extension}>
+      <svg viewBox="0 0 42 44" fill="none" strokeWidth="1.4" strokeLinejoin="round">
+        <path className="file-type-sheet" d="M17 2.5h19a3 3 0 0 1 3 3v33a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3v-33a3 3 0 0 1 3-3Z" />
+        <path className="file-type-lines" d="M29 14h6m-6 6h6m-6 6h6m-15 7h15m-15 4h12" strokeLinecap="round" />
+      </svg>
+      <span className="file-type-badge">{symbol}</span>
+    </span>
+  )
+}
 
 function formatFileSize(bytes: number) {
   if (bytes === 0) return '0 КБ'
@@ -32,9 +56,11 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formatDropdownRef = useRef<HTMLDivElement>(null)
   const formatButtonRef = useRef<HTMLButtonElement>(null)
-  const formatOptionRefs = useRef<Record<TargetFormat, HTMLButtonElement | null>>({ PDF_A_2b: null, PDF_A_1b: null })
+  const formatOptionRefs = useRef<Record<TargetFormat, HTMLButtonElement | null>>({ PDF_A_1b: null, PDF_A_2b: null, PDF_A_3b: null })
   const dragDepth = useRef(0)
   const conversionTimer = useRef<number | null>(null)
+  const conversionRequest = useRef<AbortController | null>(null)
+  const result = useRef<{ url: string; name: string } | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [fileRevision, setFileRevision] = useState(0)
   const [target, setTarget] = useState<TargetFormat>('PDF_A_2b')
@@ -43,8 +69,9 @@ function App() {
   const [serverError, setServerError] = useState('')
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const [isFormatOpen, setIsFormatOpen] = useState(false)
-  const isConverting = status === 'converting' || status === 'finishing'
+  const isConverting = status === 'converting'
   const isReady = status === 'done' || status === 'ready'
+  const availableFormats = formatOptions.filter((format) => format !== target)
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -58,11 +85,21 @@ function App() {
 
   useEffect(() => () => {
     if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
+    conversionRequest.current?.abort()
+    if (result.current) URL.revokeObjectURL(result.current.url)
   }, [])
+
+  function clearResult() {
+    if (result.current) URL.revokeObjectURL(result.current.url)
+    result.current = null
+    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
+    conversionTimer.current = null
+  }
 
   useEffect(() => {
     if (!isFormatOpen) return
-    formatOptionRefs.current[target]?.focus()
+    const firstAvailable = formatOptions.find((format) => format !== target)
+    if (firstAvailable) formatOptionRefs.current[firstAvailable]?.focus()
 
     function handleOutsideClick(event: PointerEvent) {
       if (!formatDropdownRef.current?.contains(event.target as Node)) setIsFormatOpen(false)
@@ -73,6 +110,7 @@ function App() {
   }, [isFormatOpen, target])
 
   function selectTarget(format: TargetFormat) {
+    clearResult()
     setTarget(format)
     setStatus('idle')
     setServerError('')
@@ -84,20 +122,19 @@ function App() {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       const direction = event.key === 'ArrowDown' ? 1 : -1
-      const nextFormat = formatOptions[(index + direction + formatOptions.length) % formatOptions.length]
+      const nextFormat = availableFormats[(index + direction + availableFormats.length) % availableFormats.length]
       formatOptionRefs.current[nextFormat]?.focus()
     }
     if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault()
-      formatOptionRefs.current[formatOptions[event.key === 'Home' ? 0 : formatOptions.length - 1]]?.focus()
+      formatOptionRefs.current[availableFormats[event.key === 'Home' ? 0 : availableFormats.length - 1]]?.focus()
     }
   }
 
   function selectFile(nextFile?: File) {
     setServerError('')
     if (!nextFile) return
-    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
-    conversionTimer.current = null
+    clearResult()
     setFile(nextFile)
     setFileRevision((revision) => revision + 1)
     setStatus('idle')
@@ -110,8 +147,7 @@ function App() {
 
   function clearFile() {
     if (isConverting) return
-    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
-    conversionTimer.current = null
+    clearResult()
     setFile(null)
     setStatus('idle')
     setServerError('')
@@ -119,25 +155,27 @@ function App() {
   }
 
   function handleDragEnter(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
     if (isConverting) return
     dragDepth.current += 1
     setIsDragging(true)
   }
 
-  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault()
-    if (isConverting) return
+  function handleDragLeave() {
+    if (dragDepth.current === 0) return
     dragDepth.current = Math.max(0, dragDepth.current - 1)
     if (dragDepth.current === 0) setIsDragging(false)
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
     event.dataTransfer.dropEffect = isConverting ? 'none' : 'copy'
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files') && event.dataTransfer.files.length === 0) return
     event.preventDefault()
     dragDepth.current = 0
     setIsDragging(false)
@@ -145,74 +183,108 @@ function App() {
     selectFile(event.dataTransfer.files[0])
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!file || isConverting) return
-    if (isReady) {
-      downloadOriginal()
+    if (isReady && result.current) {
+      downloadResult()
       return
     }
     setIsFormatOpen(false)
     setStatus('converting')
     setServerError('')
-    if (conversionTimer.current !== null) window.clearTimeout(conversionTimer.current)
-    conversionTimer.current = window.setTimeout(() => {
-      setStatus('finishing')
+    const controller = new AbortController()
+    conversionRequest.current = controller
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('target', target)
+
+    try {
+      const response = await fetch('/api/convert', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      })
+      if (!response.ok) {
+        let message = `Не удалось конвертировать файл (HTTP ${response.status}).`
+        if (response.headers.get('content-type')?.includes('application/json')) {
+          try {
+            const error: unknown = await response.json()
+            if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+              message = error.message
+            }
+          } catch {
+            // Оставляем сообщение со статусом, если сервер вернул некорректный JSON.
+          }
+        }
+        throw new Error(message)
+      }
+
+      const pdf = await response.blob()
+      result.current = {
+        url: URL.createObjectURL(pdf),
+        name: file.name.replace(/\.[^/.]+$/, '') + '.pdf',
+      }
+      setStatus('done')
       conversionTimer.current = window.setTimeout(() => {
-        setStatus('done')
-        conversionTimer.current = window.setTimeout(() => {
-          setStatus('ready')
-          conversionTimer.current = null
-        }, checkDisplayMs)
-      }, completionPauseMs)
-    }, demoConversionDurationMs)
+        setStatus('ready')
+        conversionTimer.current = null
+      }, checkDisplayMs)
+    } catch (error) {
+      if (controller.signal.aborted) return
+      setStatus('idle')
+      setServerError(error instanceof Error && !(error instanceof TypeError)
+        ? error.message
+        : 'Не удалось связаться с сервером. Попробуйте ещё раз.')
+    } finally {
+      if (conversionRequest.current === controller) conversionRequest.current = null
+    }
   }
 
-  function downloadOriginal() {
-    if (!file || !isReady) return
-    const url = URL.createObjectURL(file)
+  function downloadResult() {
+    if (!result.current || !isReady) return
     const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
+    link.href = result.current.url
+    link.download = result.current.name
     document.body.appendChild(link)
     link.click()
     link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
   return (
-    <div className="page-shell">
-      <header className="site-header">
-        <a className="brand" href="/" aria-label="%%temp%% — на главную">
-          <span className="brand-mark" aria-hidden="true">P<span>/A</span></span>
-          <span className="brand-name">%%temp%%</span>
-        </a>
-        <button
-          className="theme-toggle"
-          type="button"
-          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          aria-label={theme === 'light' ? 'Включить тёмную тему' : 'Включить светлую тему'}
-          aria-pressed={theme === 'dark'}
-          title={theme === 'light' ? 'Включить тёмную тему' : 'Включить светлую тему'}
-        >
-          {theme === 'light' ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8Z" />
-            </svg>
-          )}
-        </button>
-      </header>
+    <div
+      className={`page-shell${isDragging ? ' page-shell-dragging' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <div className="page-drop-overlay" aria-hidden="true">
+        <span>Отпустите файл в любом месте страницы</span>
+      </div>
+      <button
+        className="theme-toggle"
+        type="button"
+        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        aria-label={theme === 'light' ? 'Включить тёмную тему' : 'Включить светлую тему'}
+        aria-pressed={theme === 'dark'}
+        title={theme === 'light' ? 'Включить тёмную тему' : 'Включить светлую тему'}
+      >
+        {theme === 'light' ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8Z" />
+          </svg>
+        )}
+      </button>
 
       <main className="main-content">
         <div className="intro">
-          <p className="eyebrow">Конвертер документов</p>
           <h1>Конвертация в PDF/A</h1>
-          <p className="intro-text">Выберите файл и стандарт архивной копии.</p>
         </div>
 
         <form className="converter-card" onSubmit={handleSubmit}>
@@ -224,10 +296,6 @@ function App() {
 
           <div
             className={`dropzone${file ? ' dropzone-compact' : ''}${isDragging ? ' dropzone-active' : ''}${isConverting ? ' dropzone-disabled' : ''}`}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
           >
             <input
               ref={fileInputRef}
@@ -247,8 +315,11 @@ function App() {
               </span>
               {file ? (
                 <span key={fileRevision} className="dropzone-file">
-                  <strong title={file.name}>{file.name}</strong>
-                  <span>{formatFileSize(file.size)}</span>
+                  <FileTypeIcon name={file.name} />
+                  <span className="file-details">
+                    <strong title={file.name}>{file.name}</strong>
+                    <span>{formatFileSize(file.size)}</span>
+                  </span>
                 </span>
               ) : (
                 <>
@@ -309,20 +380,19 @@ function App() {
                 </svg>
               </button>
               <div id="target-options" className={`format-menu${isFormatOpen ? ' format-menu-open' : ''}`} role="listbox" aria-label="Формат результата" aria-hidden={!isFormatOpen}>
-                {formatOptions.map((format, index) => (
+                {availableFormats.map((format, index) => (
                   <button
                     key={format}
                     ref={(element) => { formatOptionRefs.current[format] = element }}
                     className="format-option"
                     type="button"
                     role="option"
-                    aria-selected={target === format}
-                    tabIndex={isFormatOpen && target === format ? 0 : -1}
+                    aria-selected={false}
+                    tabIndex={isFormatOpen && index === 0 ? 0 : -1}
                     onClick={() => selectTarget(format)}
                     onKeyDown={(event) => handleFormatOptionKeyDown(event, index)}
                   >
                     <span>{formatLabels[format]}</span>
-                    {target === format && <span aria-hidden="true">✓</span>}
                   </button>
                 ))}
               </div>
@@ -338,7 +408,7 @@ function App() {
                   <>
                     <svg className="conversion-ring" viewBox="0 0 24 24" fill="none">
                       <circle className="conversion-ring-track" cx="12" cy="12" r="9" />
-                      <circle className="conversion-ring-fill" cx="12" cy="12" r="9" style={{ animationDuration: `${demoConversionDurationMs}ms` }} />
+                      <circle className="conversion-ring-fill" cx="12" cy="12" r="9" />
                     </svg>
                     <svg className="conversion-check" viewBox="0 0 24 24" fill="none">
                       <circle cx="12" cy="12" r="10" fill="currentColor" />
@@ -360,7 +430,6 @@ function App() {
           </div>
         </form>
 
-        <p className="page-note">Демонстрация: конвертация пока не выполняется, скачивается исходный файл.</p>
       </main>
     </div>
   )
