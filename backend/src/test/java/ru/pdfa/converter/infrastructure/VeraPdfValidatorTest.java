@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -69,15 +70,19 @@ class VeraPdfValidatorTest {
 
         assertEquals(ErrorCode.FILE_PROCESSING_ERROR, error.getCode());
         assertEquals(3, attempts.get());
+        assertEquals(Map.of(), error.getDetails());
     }
 
     @Test
     void doesNotRetryNonCompliantPdf() throws IOException {
         Path pdf = Files.writeString(directory.resolve("result.pdf"), "%PDF-test");
+        String reportXml = "<report><validationReport isCompliant=\"false\"/>"
+                + "violation".repeat(2000) + "</report>";
         AtomicInteger attempts = new AtomicInteger();
         VeraPdfValidator validator = new VeraPdfValidator((profile, source, report, errorLog) -> {
             attempts.incrementAndGet();
-            Files.writeString(report, compliantReport(false));
+            Files.writeString(report, reportXml);
+            Files.writeString(errorLog, "internal veraPDF log");
             return completedProcess(1);
         });
 
@@ -85,6 +90,7 @@ class VeraPdfValidatorTest {
                 () -> validator.validate(pdf, OutputFormat.PDF_A_2b));
 
         assertEquals(ErrorCode.PDF_A_VALIDATION_FAILED, error.getCode());
+        assertEquals(Map.of("report", reportXml), error.getDetails());
         assertEquals(1, attempts.get());
     }
 
@@ -104,6 +110,7 @@ class VeraPdfValidatorTest {
 
         assertEquals(ErrorCode.FILE_PROCESSING_ERROR, error.getCode());
         assertEquals("veraPDF завершился с кодом 1", error.getMessage());
+        assertEquals(Map.of(), error.getDetails());
         assertEquals(1, attempts.get());
     }
 
