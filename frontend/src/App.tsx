@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { convertFile, type TargetFormat } from './api/conversion'
+import { convertFile, ConversionRequestError, type TargetFormat } from './api/conversion'
 
 type Status = 'idle' | 'converting' | 'ready'
 type Theme = 'light' | 'dark'
+type ConversionFeedback = { message: string | null; report: string | null }
 
 const formatLabels: Record<TargetFormat, string> = {
   PDF_A_1b: 'PDF/A-1b',
@@ -10,6 +11,33 @@ const formatLabels: Record<TargetFormat, string> = {
   PDF_A_3b: 'PDF/A-3b',
 }
 const formatOptions: TargetFormat[] = ['PDF_A_1b', 'PDF_A_2b', 'PDF_A_3b']
+
+function describeConversionError(error: unknown): ConversionFeedback {
+  if (error instanceof ConversionRequestError) {
+    switch (error.code) {
+      case 'PDF_A_VALIDATION_FAILED':
+        return { message: 'Созданный файл не прошёл проверку PDF/A.', report: error.report }
+      case 'INVALID_FILE':
+        return { message: 'Не удалось прочитать выбранный файл. Проверьте его и попробуйте ещё раз.', report: null }
+      case 'EMPTY_FILE':
+        return { message: 'Выбранный файл пуст.', report: null }
+      case 'FILE_TOO_LARGE':
+        return { message: 'Размер файла превышает допустимые 50 МБ.', report: null }
+      case 'INVALID_FILE_EXTENSION':
+        return { message: 'У файла должно быть поддерживаемое расширение.', report: null }
+      case 'UNSUPPORTED_EXTENSION':
+        return { message: 'Формат выбранного файла не поддерживается.', report: null }
+      case 'FILE_PROCESSING_ERROR':
+        return { message: null, report: null }
+      default:
+        return { message: error.status === 413
+          ? 'Размер файла превышает допустимые 50 МБ.'
+          : null, report: null }
+    }
+  }
+
+  return { message: null, report: null }
+}
 
 function FileTypeIcon({ name }: { name: string }) {
   const extension = name.split('.').at(-1)?.toUpperCase() ?? ''
@@ -58,7 +86,7 @@ function App() {
   const [target, setTarget] = useState<TargetFormat>('PDF_A_1b')
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
-  const [serverError, setServerError] = useState('')
+  const [serverError, setServerError] = useState<ConversionFeedback | null>(null)
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const [isFormatOpen, setIsFormatOpen] = useState(false)
   const isConverting = status === 'converting'
@@ -98,7 +126,7 @@ function App() {
       setStatus('idle')
     }
     setTarget(format)
-    setServerError('')
+    setServerError(null)
     setIsFormatOpen(false)
     formatButtonRef.current?.focus()
   }
@@ -117,7 +145,7 @@ function App() {
   }
 
   function selectFile(nextFile?: File) {
-    setServerError('')
+    setServerError(null)
     if (!nextFile) return
     if (resultUrl.current) URL.revokeObjectURL(resultUrl.current)
     resultUrl.current = null
@@ -137,7 +165,7 @@ function App() {
     resultUrl.current = null
     setFile(null)
     setStatus('idle')
-    setServerError('')
+    setServerError(null)
     fileInputRef.current?.focus()
   }
 
@@ -180,7 +208,7 @@ function App() {
     }
     setIsFormatOpen(false)
     setStatus('converting')
-    setServerError('')
+    setServerError(null)
     const request = new AbortController()
     conversionRequest.current = request
     try {
@@ -189,9 +217,7 @@ function App() {
       setStatus('ready')
     } catch (error) {
       if (request.signal.aborted) return
-      setServerError(error instanceof TypeError
-        ? 'Не удалось связаться с сервером. Попробуйте ещё раз.'
-        : error instanceof Error ? error.message : 'Не удалось конвертировать файл')
+      setServerError(describeConversionError(error))
       setStatus('idle')
     } finally {
       conversionRequest.current = null
@@ -206,6 +232,19 @@ function App() {
     document.body.appendChild(link)
     link.click()
     link.remove()
+  }
+
+  function downloadValidationReport() {
+    if (!file || !serverError?.report) return
+
+    const url = URL.createObjectURL(new Blob([serverError.report], { type: 'application/xml;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${file.name.replace(/\.[^/.]+$/, '')}-${target.toLowerCase().replaceAll('_', '-')}-verapdf.xml`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   return (
@@ -393,9 +432,14 @@ function App() {
           </svg>
           <div className="error-toast-copy">
             <strong>Ошибка конвертации</strong>
-            <p>{serverError}</p>
+            {serverError.message && <p>{serverError.message}</p>}
+            {serverError.report && (
+              <button className="report-download" type="button" onClick={downloadValidationReport}>
+                Скачать отчёт veraPDF (.xml)
+              </button>
+            )}
           </div>
-          <button className="error-toast-close" type="button" onClick={() => setServerError('')} aria-label="Закрыть сообщение об ошибке">
+          <button className="error-toast-close" type="button" onClick={() => setServerError(null)} aria-label="Закрыть сообщение об ошибке">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
               <path d="m5 5 10 10M15 5 5 15" />
             </svg>

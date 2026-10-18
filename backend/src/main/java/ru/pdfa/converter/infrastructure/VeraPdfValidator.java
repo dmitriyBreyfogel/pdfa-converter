@@ -16,8 +16,10 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -113,7 +115,8 @@ public final class VeraPdfValidator implements PdfaValidator {
             if (!compliant) {
                 throw AppException.build(
                         ErrorCode.PDF_A_VALIDATION_FAILED,
-                        "Созданный PDF не соответствует формату " + target
+                        "Созданный PDF не соответствует формату " + target,
+                        Map.of("report", Files.readString(report, StandardCharsets.UTF_8))
                 );
             }
             if (exitCode != 0) {
