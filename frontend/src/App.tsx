@@ -387,13 +387,29 @@ function App() {
           </button>
 
           <div className="form-message" role="status" aria-live="polite">
-            {serverError && <p className="error-message">{serverError}</p>}
             {isConverting && <span className="sr-only">Файл конвертируется</span>}
             {isReady && <span className="sr-only">Файл готов к скачиванию</span>}
           </div>
         </form>
 
       </main>
+      {serverError && (
+        <aside className="error-toast" role="alert">
+          <svg className="error-toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7.5v5.5m0 3.5h.01" />
+          </svg>
+          <div className="error-toast-copy">
+            <strong>Ошибка конвертации</strong>
+            <p>{serverError}</p>
+          </div>
+          <button className="error-toast-close" type="button" onClick={() => setServerError('')} aria-label="Закрыть сообщение об ошибке">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="m5 5 10 10M15 5 5 15" />
+            </svg>
+          </button>
+        </aside>
+      )}
     </div>
   )
 }
