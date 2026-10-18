@@ -3,7 +3,7 @@ import { convertFile, ConversionRequestError, type TargetFormat } from './api/co
 
 type Status = 'idle' | 'converting' | 'ready'
 type Theme = 'light' | 'dark'
-type ConversionFeedback = { message: string; report: string | null }
+type ConversionFeedback = { message: string | null; report: string | null }
 
 const formatLabels: Record<TargetFormat, string> = {
   PDF_A_1b: 'PDF/A-1b',
@@ -11,7 +11,6 @@ const formatLabels: Record<TargetFormat, string> = {
   PDF_A_3b: 'PDF/A-3b',
 }
 const formatOptions: TargetFormat[] = ['PDF_A_1b', 'PDF_A_2b', 'PDF_A_3b']
-const conversionFailureMessage = 'Произошла ошибка конвертации, пожалуйста, попробуйте ещё раз.'
 
 function describeConversionError(error: unknown): ConversionFeedback {
   if (error instanceof ConversionRequestError) {
@@ -29,15 +28,15 @@ function describeConversionError(error: unknown): ConversionFeedback {
       case 'UNSUPPORTED_EXTENSION':
         return { message: 'Формат выбранного файла не поддерживается.', report: null }
       case 'FILE_PROCESSING_ERROR':
-        return { message: conversionFailureMessage, report: null }
+        return { message: null, report: null }
       default:
         return { message: error.status === 413
           ? 'Размер файла превышает допустимые 50 МБ.'
-          : conversionFailureMessage, report: null }
+          : null, report: null }
     }
   }
 
-  return { message: conversionFailureMessage, report: null }
+  return { message: null, report: null }
 }
 
 function FileTypeIcon({ name }: { name: string }) {
@@ -433,7 +432,7 @@ function App() {
           </svg>
           <div className="error-toast-copy">
             <strong>Ошибка конвертации</strong>
-            <p>{serverError.message}</p>
+            {serverError.message && <p>{serverError.message}</p>}
             {serverError.report && (
               <button className="report-download" type="button" onClick={downloadValidationReport}>
                 Скачать отчёт veraPDF (.xml)
