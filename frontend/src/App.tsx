@@ -11,6 +11,25 @@ const formatLabels: Record<TargetFormat, string> = {
 }
 const formatOptions: TargetFormat[] = ['PDF_A_2b', 'PDF_A_1b', 'PDF_A_3b']
 
+function FileTypeIcon({ name }: { name: string }) {
+  const extension = name.split('.').at(-1)?.toUpperCase() ?? ''
+  const kind = extension === 'PDF' ? 'pdf'
+    : extension === 'DOC' || extension === 'DOCX' ? 'word'
+      : extension === 'XLS' || extension === 'XLSX' ? 'excel'
+        : extension === 'PPTX' ? 'powerpoint' : 'generic'
+  const symbol = kind === 'word' ? 'W' : kind === 'excel' ? 'X' : kind === 'powerpoint' ? 'P' : extension.slice(0, 4)
+
+  return (
+    <span className={`file-type-icon file-type-icon-${kind}`} aria-hidden="true">
+      <svg viewBox="0 0 42 44" fill="none" strokeWidth="1.4" strokeLinejoin="round">
+        <path className="file-type-sheet" d="M17 2.5h19a3 3 0 0 1 3 3v33a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3v-33a3 3 0 0 1 3-3Z" />
+        <path className="file-type-lines" d="M29 14h6m-6 6h6m-6 6h6m-15 7h15m-15 4h12" strokeLinecap="round" />
+      </svg>
+      <span className="file-type-badge">{symbol}</span>
+    </span>
+  )
+}
+
 function formatFileSize(bytes: number) {
   if (bytes === 0) return '0 КБ'
   return bytes < 1024 * 1024
@@ -123,6 +142,7 @@ function App() {
   }
 
   function handleDragEnter(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
     if (isConverting) return
     dragDepth.current += 1
@@ -130,18 +150,20 @@ function App() {
   }
 
   function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
-    if (isConverting) return
     dragDepth.current = Math.max(0, dragDepth.current - 1)
     if (dragDepth.current === 0) setIsDragging(false)
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
     event.dataTransfer.dropEffect = isConverting ? 'none' : 'copy'
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes('Files') && event.dataTransfer.files.length === 0) return
     event.preventDefault()
     dragDepth.current = 0
     setIsDragging(false)
@@ -187,7 +209,16 @@ function App() {
   }
 
   return (
-    <div className="page-shell">
+    <div
+      className={`page-shell${isDragging ? ' page-shell-dragging' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <div className="page-drop-overlay" aria-hidden="true">
+        <span>Отпустите файл размером до 50 МБ</span>
+      </div>
       <header className="site-header">
         <a className="brand" href="/" aria-label="PDF/A Converter — на главную">
           <span className="brand-mark" aria-hidden="true">P<span>/A</span></span>
@@ -230,10 +261,6 @@ function App() {
 
           <div
             className={`dropzone${file ? ' dropzone-compact' : ''}${isDragging ? ' dropzone-active' : ''}${isConverting ? ' dropzone-disabled' : ''}`}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
           >
             <input
               ref={fileInputRef}
@@ -254,8 +281,11 @@ function App() {
               </span>
               {file ? (
                 <span key={fileRevision} className="dropzone-file">
-                  <strong title={file.name}>{file.name}</strong>
-                  <span>{formatFileSize(file.size)}</span>
+                  <FileTypeIcon name={file.name} />
+                  <span className="file-details">
+                    <strong title={file.name}>{file.name}</strong>
+                    <span>{formatFileSize(file.size)}</span>
+                  </span>
                 </span>
               ) : (
                 <>
