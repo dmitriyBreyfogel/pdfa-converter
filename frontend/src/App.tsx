@@ -11,6 +11,7 @@ const formatLabels: Record<TargetFormat, string> = {
   PDF_A_3b: 'PDF/A-3b',
 }
 const formatOptions: TargetFormat[] = ['PDF_A_1b', 'PDF_A_2b', 'PDF_A_3b']
+const conversionFailureMessage = 'Произошла ошибка конвертации, пожалуйста, попробуйте ещё раз.'
 
 function describeConversionError(error: unknown): ConversionFeedback {
   if (error instanceof ConversionRequestError) {
@@ -28,17 +29,15 @@ function describeConversionError(error: unknown): ConversionFeedback {
       case 'UNSUPPORTED_EXTENSION':
         return { message: 'Формат выбранного файла не поддерживается.', report: null }
       case 'FILE_PROCESSING_ERROR':
-        return { message: 'Не удалось конвертировать документ. Попробуйте ещё раз.', report: null }
+        return { message: conversionFailureMessage, report: null }
       default:
         return { message: error.status === 413
           ? 'Размер файла превышает допустимые 50 МБ.'
-          : 'Не удалось конвертировать документ. Попробуйте ещё раз.', report: null }
+          : conversionFailureMessage, report: null }
     }
   }
 
-  return { message: error instanceof TypeError
-    ? 'Не удалось связаться с сервером. Попробуйте ещё раз.'
-    : 'Не удалось конвертировать документ. Попробуйте ещё раз.', report: null }
+  return { message: conversionFailureMessage, report: null }
 }
 
 function FileTypeIcon({ name }: { name: string }) {
