@@ -5,11 +5,11 @@ type Status = 'idle' | 'converting' | 'ready'
 type Theme = 'light' | 'dark'
 
 const formatLabels: Record<TargetFormat, string> = {
-  PDF_A_2b: 'PDF/A-2b',
   PDF_A_1b: 'PDF/A-1b',
+  PDF_A_2b: 'PDF/A-2b',
   PDF_A_3b: 'PDF/A-3b',
 }
-const formatOptions: TargetFormat[] = ['PDF_A_2b', 'PDF_A_1b', 'PDF_A_3b']
+const formatOptions: TargetFormat[] = ['PDF_A_1b', 'PDF_A_2b', 'PDF_A_3b']
 
 function FileTypeIcon({ name }: { name: string }) {
   const extension = name.split('.').at(-1)?.toUpperCase() ?? ''
@@ -49,13 +49,13 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formatDropdownRef = useRef<HTMLDivElement>(null)
   const formatButtonRef = useRef<HTMLButtonElement>(null)
-  const formatOptionRefs = useRef<Record<TargetFormat, HTMLButtonElement | null>>({ PDF_A_2b: null, PDF_A_1b: null, PDF_A_3b: null })
+  const formatOptionRefs = useRef<Record<TargetFormat, HTMLButtonElement | null>>({ PDF_A_1b: null, PDF_A_2b: null, PDF_A_3b: null })
   const dragDepth = useRef(0)
   const conversionRequest = useRef<AbortController | null>(null)
   const resultUrl = useRef<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [fileRevision, setFileRevision] = useState(0)
-  const [target, setTarget] = useState<TargetFormat>('PDF_A_2b')
+  const [target, setTarget] = useState<TargetFormat>('PDF_A_1b')
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const [serverError, setServerError] = useState('')
