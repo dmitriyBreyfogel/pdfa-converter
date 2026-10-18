@@ -73,6 +73,11 @@ function App() {
   }, [isFormatOpen, target])
 
   function selectTarget(format: TargetFormat) {
+    if (format !== target) {
+      if (resultUrl.current) URL.revokeObjectURL(resultUrl.current)
+      resultUrl.current = null
+      setStatus('idle')
+    }
     setTarget(format)
     setServerError('')
     setIsFormatOpen(false)
@@ -303,7 +308,7 @@ function App() {
                     setIsFormatOpen(true)
                   }
                 }}
-                disabled={isConverting || isReady}
+                disabled={isConverting}
               >
                 <span>{formatLabels[target]}</span>
                 <svg className="format-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true">
