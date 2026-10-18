@@ -385,6 +385,9 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
 .error-toast-icon { width: 22px; height: 22px; margin-top: 1px; }
 .error-toast-copy strong { display: block; font-size: 14px; line-height: 1.45; }
 .error-toast-copy p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.report-download { margin-top: 12px; padding: 8px 10px; border: 1px solid rgb(255 255 255 / 70%); border-radius: 7px; color: #fff; background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; text-align: left; }
+.report-download:hover { background: rgb(255 255 255 / 16%); }
+.report-download:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .error-toast-close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; color: #fff; background: transparent; cursor: pointer; }
 .error-toast-close:hover { background: rgb(255 255 255 / 16%); }
 .error-toast-close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
