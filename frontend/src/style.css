@@ -477,3 +477,58 @@ h2 { margin: 0; color: #1a2840; font-size: 19px; font-weight: 700; letter-spacin
 :root[data-theme='dark'] .convert-button:not(:disabled):hover { background: #4d7ba9; }
 :root[data-theme='dark'] .convert-button:disabled { color: #a9b7c8; background: #354458; }
 :root[data-theme='dark'] .convert-button:disabled.convert-button-converting { color: #fff; background: #416d9a; }
+
+/* Compact workspace */
+:root { background: #f5f7f6; }
+.main-content { max-width: 980px; padding-top: 64px; }
+.intro { min-height: 0; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+h1 { font-size: clamp(30px, 3.8vw, 42px); letter-spacing: -.045em; }
+.intro p { max-width: 520px; margin: 0; color: #728092; font-size: 14px; line-height: 1.55; }
+.converter-card { padding: 46px 50px; border-color: #dde5e7; border-radius: 16px; box-shadow: 0 15px 42px rgb(30 52 67 / 5%); }
+.card-heading { margin-bottom: 24px; }
+.card-heading h2 { font-size: 21px; }
+.card-subtitle { margin: 6px 0 0; color: #8190a0; font-size: 13px; }
+.dropzone { border-color: #c4d2db; border-radius: 11px; background: #f9fbfc; }
+.dropzone-label { height: 300px; }
+.dropzone-compact .dropzone-label { height: 72px; }
+.upload-icon { border-radius: 11px; }
+.form-divider { margin: 32px 0 27px; }
+.convert-button { height: 54px; border-radius: 8px; background: #315c8c; }
+.convert-button:not(:disabled):hover { background: #234b79; }
+.conversion-notes { margin-top: 17px; border: 1px solid #e0e7e9; border-radius: 11px; background: #ffffffad; }
+.conversion-notes summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; color: #40556a; cursor: pointer; font-size: 13px; font-weight: 650; list-style: none; }
+.conversion-notes summary::-webkit-details-marker { display: none; }
+.conversion-notes summary:hover { color: #315c8c; }
+.conversion-notes summary:focus-visible { outline: 2px solid #5c82b3; outline-offset: 2px; }
+.notes-title { display: inline-flex; align-items: center; }
+.notes-chevron { width: 28px; height: 28px; display: grid; place-items: center; flex: none; border: 1px solid #dce5ec; border-radius: 8px; color: #5b7590; background: #f6f9fb; transition: transform .2s, background-color .2s; }
+.notes-chevron svg { width: 17px; height: 17px; }
+.conversion-notes[open] .notes-chevron { transform: rotate(180deg); }
+.conversion-notes-content { padding: 0 22px 24px; color: #647488; font-size: 13px; line-height: 1.65; }
+.conversion-notes-content p { margin: 0 0 15px; }
+.conversion-notes-content ul { margin: 0; padding-left: 20px; }
+.conversion-notes-content li + li { margin-top: 10px; }
+.conversion-notes-content strong { color: #334960; }
+.conversion-notes-content .notes-conclusion { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid #e0e7e9; }
+:root[data-theme='dark'] { background: #141d2b; }
+:root[data-theme='dark'] .intro p, :root[data-theme='dark'] .card-subtitle { color: #aebed0; }
+:root[data-theme='dark'] .converter-card { border-color: #34465b; }
+:root[data-theme='dark'] .dropzone { border-color: #59718a; background: #202e3e; }
+:root[data-theme='dark'] .dropzone:hover, :root[data-theme='dark'] .dropzone:focus-within { border-color: #8cb9e9; background: #263a50; }
+:root[data-theme='dark'] .convert-button { background: #416d9a; }
+:root[data-theme='dark'] .convert-button:not(:disabled):hover { background: #4d7ba9; }
+:root[data-theme='dark'] .conversion-notes { border-color: #34465b; background: #1b2736; }
+:root[data-theme='dark'] .conversion-notes summary { color: #dbe7f4; }
+:root[data-theme='dark'] .conversion-notes summary:hover { color: #a9d2ff; }
+:root[data-theme='dark'] .conversion-notes-content { color: #aebed0; }
+:root[data-theme='dark'] .conversion-notes-content strong { color: #edf3fa; }
+:root[data-theme='dark'] .notes-chevron { border-color: #455a72; color: #b8cee5; background: #243449; }
+:root[data-theme='dark'] .conversion-notes-content .notes-conclusion { border-color: #34465b; }
+@media (max-width: 600px) {
+  .main-content { padding-top: 76px; }
+  .intro { margin-bottom: 24px; padding: 0 42px; }
+  .intro p { font-size: 13px; }
+  .converter-card { padding: 29px 20px; }
+  .dropzone-label { height: 235px; }
+  .dropzone-compact .dropzone-label { height: 72px; }
+}

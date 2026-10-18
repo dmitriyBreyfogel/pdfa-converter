@@ -281,12 +281,14 @@ function App() {
       <main className="main-content">
         <div className="intro">
           <h1>Конвертация в PDF/A</h1>
+          <p>Подготовьте документ для длительного хранения и проверьте результат.</p>
         </div>
 
         <form className="converter-card" onSubmit={handleSubmit}>
           <div className="card-heading">
             <div>
-              <h2>Выберите файл</h2>
+              <h2>Загрузите документ</h2>
+              <p className="card-subtitle">Файл до 50 МБ · один документ за раз</p>
             </div>
           </div>
 
@@ -422,6 +424,29 @@ function App() {
             {isReady && <span className="sr-only">Файл готов к скачиванию</span>}
           </div>
         </form>
+
+        <details className="conversion-notes">
+          <summary>
+            <span className="notes-title">
+              На что обратить внимание
+            </span>
+            <span className="notes-chevron" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </span>
+          </summary>
+          <div className="conversion-notes-content">
+            <p>При создании PDF/A документ может измениться. Это зависит от исходного файла, выбранного профиля и доступных шрифтов:</p>
+            <ul>
+              <li><strong>Текст может перестать выделяться.</strong> При преобразовании исходного PDF в PDF/A-1b страницы с прозрачностью иногда превращаются в изображения. Внешне страница может выглядеть правильно, но текст на ней уже нельзя будет выделить или скопировать.</li>
+              <li><strong>Оформление может сместиться.</strong> Недоступные шрифты могут заменяться, из-за чего меняются интервалы, переносы строк и положение элементов. Цвета и сложная графика тоже могут отличаться от исходника.</li>
+              <li><strong>Часть свойств PDF может исчезнуть.</strong> Ссылки и интерактивные элементы не всегда сохраняются при преобразовании в архивный формат.</li>
+              <li><strong>Конвертация может завершиться ошибкой.</strong> Повреждённый или сложный файл может не преобразоваться либо не пройти проверку veraPDF. Если результат не соответствует PDF/A, сервис предложит скачать XML-отчёт о нарушениях.</li>
+            </ul>
+            <p className="notes-conclusion">veraPDF проверяет соответствие формату PDF/A, но не сравнивает результат с исходником. Если важны точный вид страниц и возможность копировать текст, просмотрите готовый файл перед использованием.</p>
+          </div>
+        </details>
 
       </main>
       {serverError && (
