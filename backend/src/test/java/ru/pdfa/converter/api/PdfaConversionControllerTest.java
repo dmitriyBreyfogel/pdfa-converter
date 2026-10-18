@@ -16,6 +16,7 @@ import ru.pdfa.converter.error.ErrorCode;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -84,6 +85,24 @@ class PdfaConversionControllerTest {
 
         assertNotNull(source.get());
         assertFalse(Files.exists(source.get()));
+    }
+
+    @Test
+    void returnsVeraPdfReportForFailedValidation() throws Exception {
+        String report = "<report><validationReport isCompliant=\"false\"/></report>";
+        given(convertToPdfa.execute(any(Path.class), eq(OutputFormat.PDF_A_1b)))
+                .willThrow(AppException.build(
+                        ErrorCode.PDF_A_VALIDATION_FAILED,
+                        "Созданный PDF не соответствует формату PDF_A_1b",
+                        Map.of("report", report)
+                ));
+
+        mockMvc.perform(multipart("/api/convert")
+                        .file(new MockMultipartFile("file", "report.docx", null, "data".getBytes()))
+                        .param("target", "PDF_A_1b"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("PDF_A_VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.details.report").value(report));
     }
 
     @Test
