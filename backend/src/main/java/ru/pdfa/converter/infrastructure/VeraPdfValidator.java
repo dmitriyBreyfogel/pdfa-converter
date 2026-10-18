@@ -1,5 +1,7 @@
 package ru.pdfa.converter.infrastructure;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -16,13 +18,33 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 /**
  * Проверяет созданный PDF/A с помощью командной строки veraPDF.
  */
 @Component
 public final class VeraPdfValidator implements PdfaValidator {
+    private static final Logger log = LoggerFactory.getLogger(VeraPdfValidator.class);
+    private static final int MAX_ATTEMPTS = 3;
+    private static final Pattern CLOCK_ROLLBACK = Pattern.compile(
+            "start:\\d+ must not be > finish:\\d+"
+    );
+
+    private final ProcessStarter processStarter;
+
+    /**
+     * Использует установленную команду veraPDF для проверки файлов.
+     */
+    public VeraPdfValidator() {
+        this(VeraPdfValidator::startProcess);
+    }
+
+    VeraPdfValidator(ProcessStarter processStarter) {
+        this.processStarter = Objects.requireNonNull(processStarter);
+    }
 
     /**
      * Запускает проверку по профилю выбранного формата и читает отчёт veraPDF.
@@ -39,31 +61,69 @@ public final class VeraPdfValidator implements PdfaValidator {
             case PDF_A_3b -> "3b";
         };
 
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            if (validateOnce(pdf, target, profile)) {
+                return;
+            }
+            if (attempt == MAX_ATTEMPTS) {
+                throw AppException.build(
+                        ErrorCode.FILE_PROCESSING_ERROR,
+                        "veraPDF не смог проверить PDF из-за изменения системного времени"
+                );
+            }
+
+            log.warn("veraPDF прервал проверку из-за изменения системного времени, попытка {}/{}",
+                    attempt, MAX_ATTEMPTS);
+            pauseBeforeRetry(attempt);
+        }
+    }
+
+    /**
+     * Выполняет одну проверку. Возвращает {@code false} только при сбое таймера veraPDF.
+     */
+    private boolean validateOnce(Path pdf, OutputFormat target, String profile) {
         try {
             Path directory = pdf.toAbsolutePath().getParent();
             Path report = Files.createTempFile(directory, "verapdf-", ".xml");
-            Path log = Files.createTempFile(directory, "verapdf-", ".log");
+            Path errorLog = Files.createTempFile(directory, "verapdf-", ".log");
 
-            Process process = new ProcessBuilder(
-                    "verapdf", "-f", profile, "--format", "xml", pdf.toString()
-            )
-                    .redirectOutput(report.toFile())
-                    .redirectError(log.toFile())
-                    .start();
+            Process process = processStarter.start(profile, pdf, report, errorLog);
 
             int exitCode = awaitValidation(process);
-            if (!isCompliant(report)) {
+            String error = exitCode == 0 ? "" : Files.readString(errorLog);
+            if (exitCode != 0 && isClockRollback(error)) {
+                return false;
+            }
+
+            boolean compliant;
+            try {
+                compliant = isCompliant(report);
+            }
+            catch (IOException | ParserConfigurationException | SAXException e) {
+                if (exitCode != 0) {
+                    log.error("veraPDF завершился с кодом {}: {}", exitCode, error, e);
+                    throw AppException.build(
+                            ErrorCode.FILE_PROCESSING_ERROR,
+                            "veraPDF завершился с кодом " + exitCode,
+                            e
+                    );
+                }
+                throw e;
+            }
+            if (!compliant) {
                 throw AppException.build(
                         ErrorCode.PDF_A_VALIDATION_FAILED,
                         "Созданный PDF не соответствует формату " + target
                 );
             }
             if (exitCode != 0) {
+                log.error("veraPDF завершился с кодом {}: {}", exitCode, error);
                 throw AppException.build(
                         ErrorCode.FILE_PROCESSING_ERROR,
                         "veraPDF завершился с кодом " + exitCode
                 );
             }
+            return true;
         }
         catch (IOException | ParserConfigurationException | SAXException e) {
             throw AppException.build(
@@ -72,6 +132,43 @@ public final class VeraPdfValidator implements PdfaValidator {
                     e
             );
         }
+    }
+
+    private static Process startProcess(String profile, Path pdf, Path report, Path errorLog)
+            throws IOException {
+        return new ProcessBuilder(
+                "verapdf", "-f", profile, "--format", "xml", pdf.toString()
+        )
+                .redirectOutput(report.toFile())
+                .redirectError(errorLog.toFile())
+                .start();
+    }
+
+    private static boolean isClockRollback(String error) {
+        return CLOCK_ROLLBACK.matcher(error).find()
+                && error.contains("org.verapdf.component.AuditDurationImpl.fromValues");
+    }
+
+    /**
+     * Разносит повторные проверки на одну и две секунды.
+     */
+    private static void pauseBeforeRetry(int attempt) {
+        try {
+            TimeUnit.SECONDS.sleep(attempt);
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw AppException.build(
+                    ErrorCode.FILE_PROCESSING_ERROR,
+                    "Проверка PDF/A прервана",
+                    e
+            );
+        }
+    }
+
+    @FunctionalInterface
+    interface ProcessStarter {
+        Process start(String profile, Path pdf, Path report, Path errorLog) throws IOException;
     }
 
     /**
