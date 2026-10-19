@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { convertFile, ConversionRequestError, type TargetFormat } from './api/conversion'
+import DocumentPreview from './DocumentPreview'
 
 type Status = 'idle' | 'converting' | 'ready'
 type Theme = 'light' | 'dark'
@@ -85,6 +86,7 @@ function App() {
   const [fileRevision, setFileRevision] = useState(0)
   const [target, setTarget] = useState<TargetFormat>('PDF_A_1b')
   const [isDragging, setIsDragging] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const [serverError, setServerError] = useState<ConversionFeedback | null>(null)
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
@@ -145,6 +147,7 @@ function App() {
   }
 
   function selectFile(nextFile?: File) {
+    if (isPreviewOpen) return
     setServerError(null)
     if (!nextFile) return
     if (resultUrl.current) URL.revokeObjectURL(resultUrl.current)
@@ -160,7 +163,7 @@ function App() {
   }
 
   function clearFile() {
-    if (isConverting) return
+    if (isConverting || isPreviewOpen) return
     if (resultUrl.current) URL.revokeObjectURL(resultUrl.current)
     resultUrl.current = null
     setFile(null)
@@ -169,10 +172,18 @@ function App() {
     fileInputRef.current?.focus()
   }
 
+  function handlePreviewOpenChange(open: boolean) {
+    setIsPreviewOpen(open)
+    if (open) {
+      dragDepth.current = 0
+      setIsDragging(false)
+    }
+  }
+
   function handleDragEnter(event: DragEvent<HTMLDivElement>) {
     if (!event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
-    if (isConverting) return
+    if (isConverting || isPreviewOpen) return
     dragDepth.current += 1
     setIsDragging(true)
   }
@@ -187,7 +198,7 @@ function App() {
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
     if (!event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
-    event.dataTransfer.dropEffect = isConverting ? 'none' : 'copy'
+    event.dataTransfer.dropEffect = isConverting || isPreviewOpen ? 'none' : 'copy'
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -195,13 +206,13 @@ function App() {
     event.preventDefault()
     dragDepth.current = 0
     setIsDragging(false)
-    if (isConverting) return
+    if (isConverting || isPreviewOpen) return
     selectFile(event.dataTransfer.files[0])
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!file || isConverting) return
+    if (!file || isConverting || isPreviewOpen) return
     if (isReady) {
       downloadResult()
       return
@@ -293,7 +304,7 @@ function App() {
           </div>
 
           <div
-            className={`dropzone${file ? ' dropzone-compact' : ''}${isDragging ? ' dropzone-active' : ''}${isConverting ? ' dropzone-disabled' : ''}`}
+            className={`dropzone${file ? ' dropzone-compact' : ''}${isDragging ? ' dropzone-active' : ''}${isConverting || isPreviewOpen ? ' dropzone-disabled' : ''}`}
           >
             <input
               ref={fileInputRef}
@@ -302,7 +313,7 @@ function App() {
               type="file"
               accept=".pdf,.doc,.docx,.pptx,.xls,.xlsx"
               onChange={handleFileChange}
-              disabled={isConverting}
+              disabled={isConverting || isPreviewOpen}
               aria-describedby={file ? 'replace-hint' : 'file-hint'}
             />
             <label htmlFor="source-file" className="dropzone-label">
@@ -329,7 +340,7 @@ function App() {
               )}
             </label>
             {file && (
-              <button className="clear-file" type="button" onClick={clearFile} disabled={isConverting} aria-label={`Убрать ${file.name}`} title="Убрать файл">
+              <button className="clear-file" type="button" onClick={clearFile} disabled={isConverting || isPreviewOpen} aria-label={`Убрать ${file.name}`} title="Убрать файл">
                 ×
               </button>
             )}
@@ -418,6 +429,8 @@ function App() {
               </span>
             </span>
           </button>
+
+          {file && <DocumentPreview key={fileRevision} file={file} disabled={isConverting} onOpenChange={handlePreviewOpenChange} />}
 
           <div className="form-message" role="status" aria-live="polite">
             {isConverting && <span className="sr-only">Файл конвертируется</span>}

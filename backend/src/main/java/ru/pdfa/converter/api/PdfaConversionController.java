@@ -43,7 +43,7 @@ public class PdfaConversionController implements PdfaConversionApi {
      */
     @Override
     public ResponseEntity<byte[]> convert(MultipartFile file, OutputFormat target) {
-        String fileName = fileName(file);
+        String fileName = UploadedFileName.from(file);
         int extensionIndex = fileName.lastIndexOf('.');
         String suffix = extensionIndex > 0 ? fileName.substring(extensionIndex) : "";
 
@@ -84,20 +84,4 @@ public class PdfaConversionController implements PdfaConversionApi {
         }
     }
 
-    /**
-     * Убирает компоненты пути из имени, переданного клиентом.
-     */
-    private static String fileName(MultipartFile file) {
-        String original = file.getOriginalFilename();
-        if (original == null || original.isBlank()) {
-            throw AppException.build(ErrorCode.INVALID_FILE_EXTENSION, "Не указано имя входного файла");
-        }
-
-        String normalized = original.replace('\\', '/');
-        String name = normalized.substring(normalized.lastIndexOf('/') + 1);
-        if (name.isBlank()) {
-            throw AppException.build(ErrorCode.INVALID_FILE_EXTENSION, "Не указано имя входного файла");
-        }
-        return name;
-    }
 }

@@ -2,18 +2,12 @@ package ru.pdfa.converter.infrastructure;
 
 import ru.pdfa.converter.application.ConversionStrategy;
 import ru.pdfa.converter.domain.OutputFormat;
-import ru.pdfa.converter.error.AppException;
-import ru.pdfa.converter.error.ErrorCode;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.concurrent.TimeUnit;
 
 /**
- * Общий запуск LibreOffice для стратегий конвертации в PDF/A.
- * Входной файл и каталог результата должны быть подготовлены вызывающим кодом.
+ * Общая основа стратегий экспорта офисных документов в PDF/A.
+ * Формирует параметры PDF/A и передаёт запуск LibreOffice общему экспортёру.
  */
 public abstract class AbstractLibreOfficeConversionStrategy implements ConversionStrategy {
 
@@ -24,7 +18,7 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
      * @param target требуемый формат PDF/A
      * @param outputDirectory каталог для результата и временных файлов LibreOffice
      * @return путь к созданному PDF
-     * @throws AppException если запуск, конвертация или создание PDF завершились ошибкой
+     * @throws ru.pdfa.converter.error.AppException если запуск, конвертация или создание PDF завершились ошибкой
      */
     @Override
     public final Path convert(
@@ -32,21 +26,7 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
             OutputFormat target,
             Path outputDirectory
     ) {
-        Path result = expectedPdfPath(source, outputDirectory);
-        requireOutputAvailable(result);
-
-        try {
-            Process process = startLibreOffice(source, outputDirectory, exportFilter(target));
-            awaitConversion(process);
-            requireCreatedPdf(result);
-            return result;
-        } catch (IOException e) {
-            throw AppException.build(
-                    ErrorCode.FILE_PROCESSING_ERROR,
-                    "Не удалось выполнить конвертацию",
-                    e
-            );
-        }
+        return LibreOfficePdfExporter.export(source, outputDirectory, exportFilter(target));
     }
 
     /**
@@ -74,93 +54,5 @@ public abstract class AbstractLibreOfficeConversionStrategy implements Conversio
         return "pdf:" + filterName
                 + ":{\"SelectPdfVersion\":{\"type\":\"long\",\"value\":\""
                 + version + "\"}}";
-    }
-
-    /**
-     * Вычисляет имя выходного PDF по имени проверенного входного файла.
-     */
-    private static Path expectedPdfPath(Path source, Path outputDirectory) {
-        String sourceName = source.getFileName().toString();
-        int extensionIndex = sourceName.lastIndexOf('.');
-        String resultName = sourceName.substring(0, extensionIndex) + ".pdf";
-        return outputDirectory.resolve(resultName);
-    }
-
-    /**
-     * Не допускает перезаписи входного файла или выдачи старого PDF как нового результата.
-     */
-    private static void requireOutputAvailable(Path result) {
-        if (Files.exists(result, LinkOption.NOFOLLOW_LINKS)) {
-            throw AppException.build(
-                    ErrorCode.FILE_PROCESSING_ERROR,
-                    "Выходной PDF уже существует"
-            );
-        }
-    }
-
-    /**
-     * Создаёт отдельный профиль и лог, затем запускает процесс LibreOffice.
-     */
-    private static Process startLibreOffice(
-            Path source,
-            Path outputDirectory,
-            String exportFilter
-    ) throws IOException {
-        Path profile = Files.createTempDirectory(outputDirectory, "libreoffice-profile-");
-        Path log = Files.createTempFile(outputDirectory, "libreoffice-", ".log");
-
-        return new ProcessBuilder(
-                "libreoffice",
-                "-env:UserInstallation=" + profile.toUri(),
-                "--headless",
-                "--convert-to", exportFilter,
-                "--outdir", outputDirectory.toString(),
-                source.toString()
-        )
-                .redirectErrorStream(true)
-                .redirectOutput(log.toFile())
-                .start();
-    }
-
-    /**
-     * Ожидает завершения процесса не более двух минут и проверяет код выхода.
-     */
-    private static void awaitConversion(Process process) {
-        try {
-            if (!process.waitFor(120, TimeUnit.SECONDS)) {
-                process.destroyForcibly();
-                throw AppException.build(
-                        ErrorCode.FILE_PROCESSING_ERROR,
-                        "Превышено время конвертации"
-                );
-            }
-        } catch (InterruptedException e) {
-            process.destroyForcibly();
-            Thread.currentThread().interrupt();
-            throw AppException.build(
-                    ErrorCode.FILE_PROCESSING_ERROR,
-                    "Конвертация прервана",
-                    e
-            );
-        }
-
-        if (process.exitValue() != 0) {
-            throw AppException.build(
-                    ErrorCode.FILE_PROCESSING_ERROR,
-                    "LibreOffice завершился с кодом " + process.exitValue()
-            );
-        }
-    }
-
-    /**
-     * Проверяет, что LibreOffice создал непустой PDF.
-     */
-    private static void requireCreatedPdf(Path result) throws IOException {
-        if (!Files.isRegularFile(result) || Files.size(result) == 0) {
-            throw AppException.build(
-                    ErrorCode.FILE_PROCESSING_ERROR,
-                    "LibreOffice не создал PDF"
-            );
-        }
     }
 }
