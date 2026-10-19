@@ -94,7 +94,7 @@ function App() {
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111722' : '#f7f8fa')
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#183b34' : '#f8f6ef')
     try {
       window.localStorage.setItem('pdfa-theme', theme)
     } catch {
