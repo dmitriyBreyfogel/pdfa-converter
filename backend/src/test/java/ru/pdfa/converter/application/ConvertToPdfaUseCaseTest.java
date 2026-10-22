@@ -26,42 +26,63 @@ class ConvertToPdfaUseCaseTest {
     void synchronizesOfficePdfa1BeforeValidation() throws IOException {
         ConversionStrategy strategy = strategyFor(InputFormat.DOCX);
         PdfaCreationDateSynchronizer synchronizer = mock(PdfaCreationDateSynchronizer.class);
+        GhostscriptDateSynchronizer ghostscriptSynchronizer = mock(GhostscriptDateSynchronizer.class);
         PdfaValidator validator = mock(PdfaValidator.class);
         Path source = Files.writeString(directory.resolve("document.docx"), "document");
 
-        byte[] result = new ConvertToPdfaUseCase(List.of(strategy), synchronizer, validator)
+        byte[] result = new ConvertToPdfaUseCase(List.of(strategy), synchronizer, ghostscriptSynchronizer, validator)
                 .execute(source, OutputFormat.PDF_A_1b);
 
         assertArrayEquals("%PDF-test".getBytes(), result);
         var order = inOrder(synchronizer, validator);
         order.verify(synchronizer).synchronize(any(Path.class));
         order.verify(validator).validate(any(Path.class), eq(OutputFormat.PDF_A_1b));
+        verifyNoInteractions(ghostscriptSynchronizer);
     }
 
     @Test
-    void doesNotChangePdfConversion() throws IOException {
+    void synchronizesGhostscriptPdfa1BeforeValidation() throws IOException {
         ConversionStrategy strategy = strategyFor(InputFormat.PDF);
         PdfaCreationDateSynchronizer synchronizer = mock(PdfaCreationDateSynchronizer.class);
+        GhostscriptDateSynchronizer ghostscriptSynchronizer = mock(GhostscriptDateSynchronizer.class);
         PdfaValidator validator = mock(PdfaValidator.class);
         Path source = Files.writeString(directory.resolve("document.pdf"), "%PDF-source");
 
-        new ConvertToPdfaUseCase(List.of(strategy), synchronizer, validator)
+        new ConvertToPdfaUseCase(List.of(strategy), synchronizer, ghostscriptSynchronizer, validator)
                 .execute(source, OutputFormat.PDF_A_1b);
 
         verifyNoInteractions(synchronizer);
+        var order = inOrder(ghostscriptSynchronizer, validator);
+        order.verify(ghostscriptSynchronizer).synchronize(any(Path.class));
+        order.verify(validator).validate(any(Path.class), eq(OutputFormat.PDF_A_1b));
     }
 
     @Test
     void doesNotChangeOfficePdfa2() throws IOException {
         ConversionStrategy strategy = strategyFor(InputFormat.XLSX);
         PdfaCreationDateSynchronizer synchronizer = mock(PdfaCreationDateSynchronizer.class);
+        GhostscriptDateSynchronizer ghostscriptSynchronizer = mock(GhostscriptDateSynchronizer.class);
         PdfaValidator validator = mock(PdfaValidator.class);
         Path source = Files.writeString(directory.resolve("document.xlsx"), "spreadsheet");
 
-        new ConvertToPdfaUseCase(List.of(strategy), synchronizer, validator)
+        new ConvertToPdfaUseCase(List.of(strategy), synchronizer, ghostscriptSynchronizer, validator)
                 .execute(source, OutputFormat.PDF_A_2b);
 
-        verifyNoInteractions(synchronizer);
+        verifyNoInteractions(synchronizer, ghostscriptSynchronizer);
+    }
+
+    @Test
+    void doesNotSynchronizeGhostscriptPdfa2() throws IOException {
+        ConversionStrategy strategy = strategyFor(InputFormat.PDF);
+        PdfaCreationDateSynchronizer synchronizer = mock(PdfaCreationDateSynchronizer.class);
+        GhostscriptDateSynchronizer ghostscriptSynchronizer = mock(GhostscriptDateSynchronizer.class);
+        PdfaValidator validator = mock(PdfaValidator.class);
+        Path source = Files.writeString(directory.resolve("document.pdf"), "%PDF-source");
+
+        new ConvertToPdfaUseCase(List.of(strategy), synchronizer, ghostscriptSynchronizer, validator)
+                .execute(source, OutputFormat.PDF_A_2b);
+
+        verifyNoInteractions(synchronizer, ghostscriptSynchronizer);
     }
 
     private static ConversionStrategy strategyFor(InputFormat inputFormat) {

@@ -24,20 +24,24 @@ public class ConvertToPdfaUseCase {
 
     private final List<ConversionStrategy> strategies;
     private final PdfaCreationDateSynchronizer creationDateSynchronizer;
+    private final GhostscriptDateSynchronizer ghostscriptDateSynchronizer;
     private final PdfaValidator pdfaValidator;
 
     /**
      * @param strategies зарегистрированные стратегии конвертации
      * @param creationDateSynchronizer согласование даты создания офисного PDF/A-1b
+     * @param ghostscriptDateSynchronizer нормализация дат Ghostscript PDF/A-1b
      * @param pdfaValidator проверка результата на соответствие PDF/A
      */
     public ConvertToPdfaUseCase(
             List<ConversionStrategy> strategies,
             PdfaCreationDateSynchronizer creationDateSynchronizer,
+            GhostscriptDateSynchronizer ghostscriptDateSynchronizer,
             PdfaValidator pdfaValidator
     ) {
         this.strategies = strategies;
         this.creationDateSynchronizer = creationDateSynchronizer;
+        this.ghostscriptDateSynchronizer = ghostscriptDateSynchronizer;
         this.pdfaValidator = pdfaValidator;
     }
 
@@ -60,6 +64,9 @@ public class ConvertToPdfaUseCase {
             Path result = strategy.convert(source, target, outputDirectory);
             if (format != InputFormat.PDF && target == OutputFormat.PDF_A_1b) {
                 creationDateSynchronizer.synchronize(result);
+            }
+            else if (format == InputFormat.PDF && target == OutputFormat.PDF_A_1b) {
+                ghostscriptDateSynchronizer.synchronize(result);
             }
             pdfaValidator.validate(result, target);
             return Files.readAllBytes(result);
