@@ -23,7 +23,7 @@ function describeConversionError(error: unknown): ConversionFeedback {
       case 'EMPTY_FILE':
         return { message: 'Выбранный файл пуст.', report: null }
       case 'FILE_TOO_LARGE':
-        return { message: 'Размер файла превышает допустимые 50 МБ.', report: null }
+        return { message: 'Размер файла превышает допустимые 200 МБ.', report: null }
       case 'INVALID_FILE_EXTENSION':
         return { message: 'У файла должно быть поддерживаемое расширение.', report: null }
       case 'UNSUPPORTED_EXTENSION':
@@ -32,7 +32,7 @@ function describeConversionError(error: unknown): ConversionFeedback {
         return { message: null, report: null }
       default:
         return { message: error.status === 413
-          ? 'Размер файла превышает допустимые 50 МБ.'
+          ? 'Размер файла превышает допустимые 200 МБ.'
           : null, report: null }
     }
   }
@@ -267,7 +267,7 @@ function App() {
       onDrop={handleDrop}
     >
       <div className="page-drop-overlay" aria-hidden="true">
-        <span>Отпустите файл размером до 50 МБ</span>
+        <span>Отпустите файл размером до 200 МБ</span>
       </div>
       <button
         className="theme-toggle"
@@ -299,7 +299,7 @@ function App() {
           <div className="card-heading">
             <div>
               <h2>Загрузите документ</h2>
-              <p className="card-subtitle">Файл до 50 МБ · один документ за раз</p>
+              <p className="card-subtitle">Файл до 200 МБ · один документ за раз</p>
             </div>
           </div>
 

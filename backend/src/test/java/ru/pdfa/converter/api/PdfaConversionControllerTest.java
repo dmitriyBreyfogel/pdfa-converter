@@ -119,7 +119,7 @@ class PdfaConversionControllerTest {
     @Test
     void returnsPayloadTooLargeForUploadLimit() throws Exception {
         given(convertToPdfa.execute(any(Path.class), eq(OutputFormat.PDF_A_1b)))
-                .willThrow(new MaxUploadSizeExceededException(50L * 1024 * 1024));
+                .willThrow(new MaxUploadSizeExceededException(200L * 1024 * 1024));
 
         mockMvc.perform(multipart("/api/convert")
                         .file(new MockMultipartFile("file", "large.docx", null, "data".getBytes()))
