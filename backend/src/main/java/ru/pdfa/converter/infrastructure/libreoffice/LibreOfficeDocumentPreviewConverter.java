@@ -1,4 +1,4 @@
-package ru.pdfa.converter.infrastructure;
+package ru.pdfa.converter.infrastructure.libreoffice;
 
 import org.springframework.stereotype.Component;
 import ru.pdfa.converter.application.DocumentPreviewConverter;

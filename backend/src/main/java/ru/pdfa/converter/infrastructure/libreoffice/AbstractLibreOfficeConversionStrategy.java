@@ -1,4 +1,4 @@
-package ru.pdfa.converter.infrastructure;
+package ru.pdfa.converter.infrastructure.libreoffice;
 
 import ru.pdfa.converter.application.ConversionStrategy;
 import ru.pdfa.converter.domain.OutputFormat;

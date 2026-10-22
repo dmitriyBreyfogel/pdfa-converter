@@ -1,4 +1,4 @@
-package ru.pdfa.converter.infrastructure;
+package ru.pdfa.converter.infrastructure.metadata;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;

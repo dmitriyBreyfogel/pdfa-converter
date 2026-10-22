@@ -1,4 +1,4 @@
-package ru.pdfa.converter.infrastructure;
+package ru.pdfa.converter.infrastructure.validation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
