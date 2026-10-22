@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { previewFile, PreviewRequestError } from './api/preview'
+import { previewFile, PreviewRequestError } from '../api/preview'
 
 type PreviewState =
   | { status: 'idle' | 'loading' }

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { convertFile, ConversionRequestError, type TargetFormat } from './api/conversion'
-import DocumentPreview from './DocumentPreview'
+import DocumentPreview from './preview/DocumentPreview'
 
 type Status = 'idle' | 'converting' | 'ready'
 type Theme = 'light' | 'dark'
