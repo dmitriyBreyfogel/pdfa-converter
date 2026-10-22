@@ -1,4 +1,4 @@
-package ru.pdfa.converter.application;
+package ru.pdfa.converter.application.preview;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;

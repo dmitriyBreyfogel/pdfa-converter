@@ -1,4 +1,4 @@
-package ru.pdfa.converter.application;
+package ru.pdfa.converter.application.conversion;
 
 import ru.pdfa.converter.domain.InputFormat;
 import ru.pdfa.converter.domain.OutputFormat;

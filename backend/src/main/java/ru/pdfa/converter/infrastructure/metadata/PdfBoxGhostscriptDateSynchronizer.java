@@ -5,7 +5,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdfwriter.compress.CompressParameters;
 import org.springframework.stereotype.Component;
-import ru.pdfa.converter.application.GhostscriptDateSynchronizer;
+import ru.pdfa.converter.application.conversion.GhostscriptDateSynchronizer;
 import ru.pdfa.converter.error.AppException;
 import ru.pdfa.converter.error.ErrorCode;
 

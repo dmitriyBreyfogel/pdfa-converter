@@ -1,4 +1,4 @@
-package ru.pdfa.converter.application;
+package ru.pdfa.converter.application.conversion;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

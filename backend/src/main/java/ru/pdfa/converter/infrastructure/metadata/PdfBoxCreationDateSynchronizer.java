@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import ru.pdfa.converter.application.PdfaCreationDateSynchronizer;
+import ru.pdfa.converter.application.conversion.PdfaCreationDateSynchronizer;
 import ru.pdfa.converter.error.AppException;
 import ru.pdfa.converter.error.ErrorCode;
 

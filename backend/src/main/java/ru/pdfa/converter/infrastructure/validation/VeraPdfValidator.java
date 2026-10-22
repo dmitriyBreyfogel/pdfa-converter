@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import ru.pdfa.converter.application.PdfaValidator;
+import ru.pdfa.converter.application.conversion.PdfaValidator;
 import ru.pdfa.converter.domain.OutputFormat;
 import ru.pdfa.converter.error.AppException;
 import ru.pdfa.converter.error.ErrorCode;

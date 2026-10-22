@@ -1,4 +1,4 @@
-package ru.pdfa.converter.application;
+package ru.pdfa.converter.application.conversion;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

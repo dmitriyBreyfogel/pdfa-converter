@@ -1,7 +1,7 @@
 package ru.pdfa.converter.infrastructure.libreoffice;
 
 import org.springframework.stereotype.Component;
-import ru.pdfa.converter.application.DocumentPreviewConverter;
+import ru.pdfa.converter.application.preview.DocumentPreviewConverter;
 import ru.pdfa.converter.domain.InputFormat;
 
 import java.nio.file.Path;

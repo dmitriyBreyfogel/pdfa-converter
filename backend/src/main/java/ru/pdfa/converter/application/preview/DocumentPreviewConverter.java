@@ -1,4 +1,4 @@
-package ru.pdfa.converter.application;
+package ru.pdfa.converter.application.preview;
 
 import ru.pdfa.converter.domain.InputFormat;
 

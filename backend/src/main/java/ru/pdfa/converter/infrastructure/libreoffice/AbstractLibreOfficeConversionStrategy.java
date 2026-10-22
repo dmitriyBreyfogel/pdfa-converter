@@ -1,6 +1,6 @@
 package ru.pdfa.converter.infrastructure.libreoffice;
 
-import ru.pdfa.converter.application.ConversionStrategy;
+import ru.pdfa.converter.application.conversion.ConversionStrategy;
 import ru.pdfa.converter.domain.OutputFormat;
 
 import java.nio.file.Path;
