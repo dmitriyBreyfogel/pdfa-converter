@@ -1,4 +1,4 @@
-package ru.pdfa.converter.infrastructure;
+package ru.pdfa.converter.infrastructure.libreoffice;
 
 import ru.pdfa.converter.error.AppException;
 import ru.pdfa.converter.error.ErrorCode;

@@ -9,7 +9,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import ru.pdfa.converter.application.ConvertToPdfaUseCase;
+import ru.pdfa.converter.application.conversion.ConvertToPdfaUseCase;
 import ru.pdfa.converter.domain.OutputFormat;
 import ru.pdfa.converter.error.AppException;
 import ru.pdfa.converter.error.ErrorCode;
@@ -119,7 +119,7 @@ class PdfaConversionControllerTest {
     @Test
     void returnsPayloadTooLargeForUploadLimit() throws Exception {
         given(convertToPdfa.execute(any(Path.class), eq(OutputFormat.PDF_A_1b)))
-                .willThrow(new MaxUploadSizeExceededException(50L * 1024 * 1024));
+                .willThrow(new MaxUploadSizeExceededException(200L * 1024 * 1024));
 
         mockMvc.perform(multipart("/api/convert")
                         .file(new MockMultipartFile("file", "large.docx", null, "data".getBytes()))

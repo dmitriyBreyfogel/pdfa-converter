@@ -7,7 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import ru.pdfa.converter.application.CreateDocumentPreviewUseCase;
+import ru.pdfa.converter.application.preview.CreateDocumentPreviewUseCase;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

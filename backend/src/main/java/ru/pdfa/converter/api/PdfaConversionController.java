@@ -8,7 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import ru.pdfa.converter.application.ConvertToPdfaUseCase;
+import ru.pdfa.converter.application.conversion.ConvertToPdfaUseCase;
 import ru.pdfa.converter.domain.OutputFormat;
 import ru.pdfa.converter.error.AppException;
 import ru.pdfa.converter.error.ErrorCode;

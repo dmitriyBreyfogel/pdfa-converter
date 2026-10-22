@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { previewFile, PreviewRequestError } from './api/preview'
+import { previewFile, PreviewRequestError } from '../api/preview'
 
 type PreviewState =
   | { status: 'idle' | 'loading' }
@@ -10,12 +10,12 @@ function describePreviewError(error: unknown): string {
   if (error instanceof PreviewRequestError) {
     switch (error.code) {
       case 'EMPTY_FILE': return 'Выбранный файл пуст.'
-      case 'FILE_TOO_LARGE': return 'Размер файла превышает допустимые 50 МБ.'
+      case 'FILE_TOO_LARGE': return 'Размер файла превышает допустимые 200 МБ.'
       case 'INVALID_FILE': return 'Не удалось прочитать выбранный файл.'
       case 'INVALID_FILE_EXTENSION':
       case 'UNSUPPORTED_EXTENSION': return 'Формат выбранного файла не поддерживается.'
       default: return error.status === 413
-        ? 'Размер файла превышает допустимые 50 МБ.'
+        ? 'Размер файла превышает допустимые 200 МБ.'
         : 'Не удалось подготовить предпросмотр. Попробуйте ещё раз.'
     }
   }
